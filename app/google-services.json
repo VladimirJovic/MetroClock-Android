@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "379668362923",
+    "project_id": "metroclockbyecho",
+    "storage_bucket": "metroclockbyecho.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:379668362923:android:1f865f82e1db4249f269ee",
+        "android_client_info": {
+          "package_name": "com.echoproduction.metroclock"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCo5NKlEQydHKkQnXCOVeDkfnlltiXYR6E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
