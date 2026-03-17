@@ -16,6 +16,7 @@ import androidx.navigation.compose.rememberNavController
 import com.echoproduction.metroclock.models.UserRole
 import com.echoproduction.metroclock.services.AuthService
 import com.echoproduction.metroclock.services.ClockService
+import com.echoproduction.metroclock.services.TaskService
 import com.echoproduction.metroclock.services.WorkspaceService
 import com.echoproduction.metroclock.ui.employee.ClockScreen
 import com.echoproduction.metroclock.ui.employee.MyHoursScreen
@@ -25,12 +26,12 @@ import com.echoproduction.metroclock.ui.manager.ProfileScreen
 import com.echoproduction.metroclock.ui.manager.TeamHoursScreen
 
 sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
-    object Clock : Screen("clock", "Clock", Icons.Filled.Home)
-    object Requests : Screen("requests", "Requests", Icons.Filled.List)
-    object MyHours : Screen("myhours", "My Hours", Icons.Filled.DateRange)
-    object Inbox : Screen("inbox", "Inbox", Icons.Filled.Notifications)
-    object TeamHours : Screen("teamhours", "Team", Icons.Filled.DateRange)
-    object Profile : Screen("profile", "Profile", Icons.Filled.Person)
+    object Clock     : Screen("clock",     "Clock",    Icons.Filled.Home)
+    object Requests  : Screen("requests",  "Requests", Icons.Filled.List)
+    object MyHours   : Screen("myhours",   "My Hours", Icons.Filled.DateRange)
+    object Inbox     : Screen("inbox",     "Inbox",    Icons.Filled.Notifications)
+    object TeamHours : Screen("teamhours", "Team",     Icons.Filled.DateRange)
+    object Profile   : Screen("profile",   "Profile",  Icons.Filled.Person)
 }
 
 @Composable
@@ -38,6 +39,7 @@ fun MainNavigation(
     authService: AuthService,
     clockService: ClockService,
     workspaceService: WorkspaceService,
+    taskService: TaskService,
     currentSSID: String?
 ) {
     val user by authService.currentUser.collectAsState()
@@ -48,7 +50,7 @@ fun MainNavigation(
     val isManager = user?.role == UserRole.MANAGER || user?.role == UserRole.ADMIN
 
     val employeeTabs = listOf(Screen.Clock, Screen.MyHours, Screen.Requests, Screen.Profile)
-    val managerTabs = listOf(Screen.Clock, Screen.MyHours, Screen.TeamHours, Screen.Inbox, Screen.Profile)
+    val managerTabs  = listOf(Screen.Clock, Screen.MyHours, Screen.TeamHours, Screen.Inbox, Screen.Profile)
     val tabs = if (isManager) managerTabs else employeeTabs
 
     Scaffold(
@@ -60,9 +62,7 @@ fun MainNavigation(
                         selected = currentRoute == screen.route,
                         onClick = {
                             navController.navigate(screen.route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
-                                }
+                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                                 launchSingleTop = true
                                 restoreState = true
                             }
@@ -81,16 +81,12 @@ fun MainNavigation(
             }
         }
     ) { innerPadding ->
-        NavHost(
-            navController = navController,
-            startDestination = Screen.Clock.route,
-            modifier = Modifier.padding(innerPadding)
-        ) {
+        NavHost(navController = navController, startDestination = Screen.Clock.route, modifier = Modifier.padding(innerPadding)) {
             composable(Screen.Clock.route) {
-                ClockScreen(authService, clockService, workspaceService, currentSSID)
+                ClockScreen(authService, clockService, workspaceService, taskService, currentSSID)
             }
             composable(Screen.Requests.route) {
-                RequestsScreen(authService)
+                RequestsScreen(authService, taskService)
             }
             composable(Screen.MyHours.route) {
                 MyHoursScreen(authService)

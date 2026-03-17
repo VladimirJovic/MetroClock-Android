@@ -1,6 +1,7 @@
 package com.echoproduction.metroclock.ui.employee
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -17,6 +18,8 @@ import com.echoproduction.metroclock.models.Request
 import com.echoproduction.metroclock.models.RequestStatus
 import com.echoproduction.metroclock.models.RequestType
 import com.echoproduction.metroclock.services.AuthService
+import com.echoproduction.metroclock.services.ExternalTask
+import com.echoproduction.metroclock.services.TaskService
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.google.firebase.Timestamp
@@ -26,9 +29,14 @@ import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RequestsScreen(authService: AuthService) {
+fun RequestsScreen(
+    authService: AuthService,
+    taskService: TaskService
+) {
     val user by authService.currentUser.collectAsState()
     val db = FirebaseFirestore.getInstance()
+    val tasks by taskService.tasks.collectAsState()
+    val isAvailable by taskService.isAvailable.collectAsState()
 
     var requests by remember { mutableStateOf<List<Request>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -62,14 +70,12 @@ fun RequestsScreen(authService: AuthService) {
                             userId = data["userId"] as? String ?: "",
                             workspaceId = data["workspaceId"] as? String ?: "",
                             managerId = data["managerId"] as? String ?: "",
-                            type = type,
-                            status = status,
+                            type = type, status = status,
                             date = data["date"] as? Timestamp ?: Timestamp.now(),
                             employeeNote = data["employeeNote"] as? String,
                             managerNote = data["managerNote"] as? String,
                             createdAt = data["createdAt"] as? Timestamp ?: Timestamp.now(),
-                            remoteHours = (data["remoteHours"] as? Double)
-                                ?: (data["remoteHours"] as? Long)?.toDouble()
+                            remoteHours = (data["remoteHours"] as? Double) ?: (data["remoteHours"] as? Long)?.toDouble()
                         )
                     }.sortedByDescending { it.createdAt.toDate() }
                     onDone()
@@ -78,20 +84,12 @@ fun RequestsScreen(authService: AuthService) {
         }
     }
 
-    LaunchedEffect(user) {
-        loadRequests { isLoading = false }
-    }
+    LaunchedEffect(user) { loadRequests { isLoading = false } }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFF080810))
-    ) {
+    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF080810))) {
         Column(modifier = Modifier.fillMaxSize()) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp),
+                modifier = Modifier.fillMaxWidth().padding(24.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -100,9 +98,7 @@ fun RequestsScreen(authService: AuthService) {
                     onClick = { showNewRequestSheet = true },
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF5B8EF5))
-                ) {
-                    Text("+ New")
-                }
+                ) { Text("+ New") }
             }
 
             if (isLoading) {
@@ -112,10 +108,7 @@ fun RequestsScreen(authService: AuthService) {
             } else {
                 SwipeRefresh(
                     state = rememberSwipeRefreshState(isRefreshing),
-                    onRefresh = {
-                        isRefreshing = true
-                        loadRequests { isRefreshing = false }
-                    }
+                    onRefresh = { isRefreshing = true; loadRequests { isRefreshing = false } }
                 ) {
                     if (requests.isEmpty()) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -127,9 +120,7 @@ fun RequestsScreen(authService: AuthService) {
                             contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp),
                             verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            items(requests) { request ->
-                                RequestCard(request)
-                            }
+                            items(requests) { request -> RequestCard(request) }
                         }
                     }
                 }
@@ -139,8 +130,9 @@ fun RequestsScreen(authService: AuthService) {
         if (showNewRequestSheet) {
             NewRequestBottomSheet(
                 user = user,
+                tasks = if (isAvailable) tasks else emptyList(),
                 onDismiss = { showNewRequestSheet = false },
-                onSubmit = { type, date, note, hours ->
+                onSubmit = { type, date, note, hours, taskIds ->
                     val u = user ?: return@NewRequestBottomSheet
                     val data = hashMapOf<String, Any>(
                         "userId" to u.id,
@@ -158,6 +150,7 @@ fun RequestsScreen(authService: AuthService) {
                         "createdAt" to Timestamp.now()
                     )
                     hours?.let { data["remoteHours"] = it }
+                    if (taskIds.isNotEmpty()) data["taskIds"] = taskIds
                     db.collection("requests").add(data).addOnSuccessListener {
                         showNewRequestSheet = false
                         loadRequests {}
@@ -168,14 +161,15 @@ fun RequestsScreen(authService: AuthService) {
     }
 }
 
+// MARK: - RequestCard
+
 @Composable
 fun RequestCard(request: Request) {
     val dateFormat = SimpleDateFormat("d MMM yyyy", Locale.getDefault())
     val typeLabel = when (request.type) {
         RequestType.REMOTE_WORK -> {
             val h = request.remoteHours
-            if (h != null) "Remote Work · ${if (h % 1 == 0.0) h.toInt() else h}h"
-            else "Remote Work"
+            if (h != null) "Remote Work · ${if (h % 1 == 0.0) h.toInt() else h}h" else "Remote Work"
         }
         RequestType.SICK_LEAVE -> "Sick Leave"
         RequestType.DAY_OFF -> "Day Off"
@@ -184,15 +178,14 @@ fun RequestCard(request: Request) {
     val statusColor = when (request.status) {
         RequestStatus.APPROVED -> Color(0xFF2DD47E)
         RequestStatus.REJECTED -> Color(0xFFF55252)
-        RequestStatus.PENDING -> Color(0xFFF5A623)
+        RequestStatus.PENDING  -> Color(0xFFF5A623)
     }
     val typeIcon = when (request.type) {
         RequestType.REMOTE_WORK -> "🏠"
-        RequestType.SICK_LEAVE -> "🤒"
-        RequestType.DAY_OFF -> "☀️"
-        RequestType.OVERTIME -> "⚡"
+        RequestType.SICK_LEAVE  -> "🤒"
+        RequestType.DAY_OFF     -> "☀️"
+        RequestType.OVERTIME    -> "⚡"
     }
-
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -213,15 +206,12 @@ fun RequestCard(request: Request) {
             }
             Text(
                 text = request.status.name.lowercase().replaceFirstChar { it.uppercase() },
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = statusColor,
+                fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = statusColor,
                 modifier = Modifier
                     .background(statusColor.copy(alpha = 0.12f), RoundedCornerShape(8.dp))
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             )
         }
-
         request.employeeNote?.let {
             if (it.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(8.dp))
@@ -237,65 +227,50 @@ fun RequestCard(request: Request) {
     }
 }
 
+// MARK: - NewRequestBottomSheet
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewRequestBottomSheet(
     user: com.echoproduction.metroclock.models.MCUser?,
+    tasks: List<ExternalTask>,
     onDismiss: () -> Unit,
-    onSubmit: (RequestType, Date, String, Double?) -> Unit
+    onSubmit: (RequestType, Date, String, Double?, List<String>) -> Unit
 ) {
     var selectedType by remember { mutableStateOf(RequestType.REMOTE_WORK) }
     var note by remember { mutableStateOf("") }
     var remoteHours by remember { mutableStateOf(8.0) }
     var selectedDate by remember { mutableStateOf(Date()) }
+    var selectedTasks by remember { mutableStateOf<Set<ExternalTask>>(emptySet()) }
 
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        containerColor = Color(0xFF0F0F1A)
-    ) {
-        Column(
-            modifier = Modifier.padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Color(0xFF0F0F1A)) {
+        Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text("New Request", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(
-                    RequestType.REMOTE_WORK to "🏠",
-                    RequestType.SICK_LEAVE to "🤒",
-                    RequestType.DAY_OFF to "☀️"
-                ).forEach { (type, icon) ->
+                listOf(RequestType.REMOTE_WORK to "🏠", RequestType.SICK_LEAVE to "🤒", RequestType.DAY_OFF to "☀️").forEach { (type, icon) ->
                     val selected = selectedType == type
                     Button(
                         onClick = { selectedType = type },
                         shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (selected) Color(0xFF5B8EF5) else Color(0xFF1E1E30)
-                        ),
+                        colors = ButtonDefaults.buttonColors(containerColor = if (selected) Color(0xFF5B8EF5) else Color(0xFF1E1E30)),
                         modifier = Modifier.weight(1f)
-                    ) {
-                        Text(icon, fontSize = 18.sp)
-                    }
+                    ) { Text(icon, fontSize = 18.sp) }
                 }
             }
 
             Text(
                 text = when (selectedType) {
                     RequestType.REMOTE_WORK -> "Remote Work"
-                    RequestType.SICK_LEAVE -> "Sick Leave"
-                    RequestType.DAY_OFF -> "Day Off"
+                    RequestType.SICK_LEAVE  -> "Sick Leave"
+                    RequestType.DAY_OFF     -> "Day Off"
                     else -> ""
                 },
-                fontSize = 14.sp,
-                color = Color(0xFF8888AA)
+                fontSize = 14.sp, color = Color(0xFF8888AA)
             )
 
             if (selectedType == RequestType.REMOTE_WORK) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Text("Hours", fontSize = 14.sp, color = Color.White)
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         IconButton(onClick = { if (remoteHours > 1) remoteHours -= 0.5 }) {
@@ -303,12 +278,33 @@ fun NewRequestBottomSheet(
                         }
                         Text(
                             text = if (remoteHours % 1 == 0.0) "${remoteHours.toInt()}h" else "${remoteHours}h",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.White
+                            fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.White
                         )
                         IconButton(onClick = { if (remoteHours < 24) remoteHours += 0.5 }) {
                             Text("+", fontSize = 20.sp, color = Color(0xFF5B8EF5))
+                        }
+                    }
+                }
+
+                if (tasks.isNotEmpty()) {
+                    Text("Tasks (optional)", fontSize = 12.sp, color = Color(0xFF8888AA))
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        tasks.forEach { task ->
+                            val isSelected = selectedTasks.contains(task)
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { selectedTasks = if (isSelected) selectedTasks - task else selectedTasks + task }
+                                    .padding(vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Text(if (isSelected) "✅" else "⬜", fontSize = 16.sp)
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(task.displayName, fontSize = 13.sp, color = Color.White, maxLines = 2)
+                                }
+                            }
+                            Divider(color = Color(0xFF2A2A40))
                         }
                     }
                 }
@@ -331,18 +327,16 @@ fun NewRequestBottomSheet(
             Button(
                 onClick = {
                     onSubmit(
-                        selectedType,
-                        selectedDate,
-                        note,
-                        if (selectedType == RequestType.REMOTE_WORK) remoteHours else null
+                        selectedType, selectedDate, note,
+                        if (selectedType == RequestType.REMOTE_WORK) remoteHours else null,
+                        selectedTasks.map { it.id }
                     )
                 },
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF5B8EF5))
-            ) {
-                Text("Submit Request", fontWeight = FontWeight.SemiBold)
-            }
+            ) { Text("Submit Request", fontWeight = FontWeight.SemiBold) }
+
             Spacer(modifier = Modifier.height(16.dp))
         }
     }

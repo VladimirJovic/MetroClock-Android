@@ -1,6 +1,7 @@
 package com.echoproduction.metroclock.services
 
 import com.echoproduction.metroclock.models.MCOffice
+import com.echoproduction.metroclock.models.WorkspaceConfig
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,6 +14,9 @@ class WorkspaceService {
 
     private val _offices = MutableStateFlow<List<MCOffice>>(emptyList())
     val offices: StateFlow<List<MCOffice>> = _offices
+
+    private val _config = MutableStateFlow(WorkspaceConfig())
+    val config: StateFlow<WorkspaceConfig> = _config
 
     private val _currentLat = MutableStateFlow(0.0)
     private val _currentLng = MutableStateFlow(0.0)
@@ -45,6 +49,22 @@ class WorkspaceService {
                         gpsRadius = (data["gpsRadius"] as? Double) ?: (data["gpsRadius"] as? Long)?.toDouble() ?: 100.0
                     )
                 }
+            }
+    }
+
+    fun fetchWorkspaceConfig(workspaceId: String) {
+        db.collection("workspaces").document(workspaceId).get()
+            .addOnSuccessListener { doc ->
+                val data = doc.data ?: return@addOnSuccessListener
+                @Suppress("UNCHECKED_CAST")
+                _config.value = WorkspaceConfig(
+                    clickupApiToken = data["clickupApiToken"] as? String,
+                    clickupUserMappings = (data["clickupUserMappings"] as? Map<String, String>) ?: emptyMap(),
+                    slackWebhookUrl = data["slackWebhookUrl"] as? String,
+                    discordWebhookUrl = data["discordWebhookUrl"] as? String,
+                    slackUserMappings = (data["slackUserMappings"] as? Map<String, String>) ?: emptyMap(),
+                    discordUserMappings = (data["discordUserMappings"] as? Map<String, String>) ?: emptyMap()
+                )
             }
     }
 

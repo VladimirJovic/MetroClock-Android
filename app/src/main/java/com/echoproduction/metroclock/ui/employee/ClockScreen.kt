@@ -4,7 +4,10 @@ package com.echoproduction.metroclock.ui.employee
 
 import android.Manifest
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -20,6 +23,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.echoproduction.metroclock.services.AuthService
 import com.echoproduction.metroclock.services.ClockService
+import com.echoproduction.metroclock.services.ExternalTask
+import com.echoproduction.metroclock.services.TaskService
 import com.echoproduction.metroclock.services.WorkspaceService
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
@@ -33,16 +38,22 @@ fun ClockScreen(
     authService: AuthService,
     clockService: ClockService,
     workspaceService: WorkspaceService,
+    taskService: TaskService,
     currentSSID: String?
 ) {
     val user by authService.currentUser.collectAsState()
     val isClockedIn by clockService.isClockedIn.collectAsState()
     val isLoading by clockService.isLoading.collectAsState()
     val offices by workspaceService.offices.collectAsState()
+    val tasks by taskService.tasks.collectAsState()
+    val isAvailable by taskService.isAvailable.collectAsState()
+    val tasksLoading by taskService.isLoading.collectAsState()
 
     var currentTime by remember { mutableStateOf(Date()) }
     var showOvertimeSheet by remember { mutableStateOf(false) }
+    var showTaskSheet by remember { mutableStateOf(false) }
     var overtimeNote by remember { mutableStateOf("") }
+    var selectedTasks by remember { mutableStateOf<Set<ExternalTask>>(emptySet()) }
 
     val permissionsState = rememberMultiplePermissionsState(
         listOf(
@@ -80,8 +91,7 @@ fun ClockScreen(
 
     val plannedHoursToday: Double = run {
         val dow = Calendar.getInstance().get(Calendar.DAY_OF_WEEK) - 1
-        val hours = user?.dailyHours?.get(dow.toString())
-        hours ?: 8.0
+        user?.dailyHours?.get(dow.toString()) ?: 0.0
     }
 
     val workedToday: String = run {
@@ -93,33 +103,18 @@ fun ClockScreen(
     val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
     val dateFormat = SimpleDateFormat("EEE, d MMM yyyy", Locale.getDefault())
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFF080810))
-    ) {
+    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF080810))) {
         Column(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(modifier = Modifier.height(48.dp))
 
-            Text(
-                text = timeFormat.format(currentTime),
-                fontSize = 52.sp,
-                fontWeight = FontWeight.Thin,
-                color = Color.White,
-                fontFamily = FontFamily.Monospace
-            )
-            Text(
-                text = dateFormat.format(currentTime),
-                fontSize = 14.sp,
-                color = Color(0xFF8888AA)
-            )
+            Text(timeFormat.format(currentTime), fontSize = 52.sp, fontWeight = FontWeight.Thin, color = Color.White, fontFamily = FontFamily.Monospace)
+            Text(dateFormat.format(currentTime), fontSize = 14.sp, color = Color(0xFF8888AA))
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Status card
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -128,51 +123,39 @@ fun ClockScreen(
                     .padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column {
                         Text("Status", fontSize = 11.sp, color = Color(0xFF8888AA))
                         Text(
                             text = if (isClockedIn) "Clocked In" else "Clocked Out",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
                             color = if (isClockedIn) Color(0xFF2DD47E) else Color(0xFFF55252)
                         )
                     }
-                    Box(
-                        modifier = Modifier
-                            .size(12.dp)
-                            .clip(CircleShape)
-                            .background(if (isClockedIn) Color(0xFF2DD47E) else Color(0xFFF55252))
-                    )
+                    Box(modifier = Modifier.size(12.dp).clip(CircleShape).background(if (isClockedIn) Color(0xFF2DD47E) else Color(0xFFF55252)))
                 }
 
                 Divider(color = Color(0xFF2A2A40))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Column {
                         Text("Worked today", fontSize = 11.sp, color = Color(0xFF8888AA))
-                        Text(
-                            text = if (isClockedIn) workedToday else "—",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.White
-                        )
+                        Text(text = if (isClockedIn) workedToday else "—", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
                     }
                     Column(horizontalAlignment = Alignment.End) {
                         Text("Location", fontSize = 11.sp, color = Color(0xFF8888AA))
-                        Text(
-                            text = locationLabel,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = if (isLocationVerified) Color(0xFF2DD47E) else Color(0xFFF55252)
-                        )
+                        Text(text = locationLabel, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = if (isLocationVerified) Color(0xFF2DD47E) else Color(0xFFF55252))
+                    }
+                }
+
+                // Show selected tasks
+                if (selectedTasks.isNotEmpty()) {
+                    Divider(color = Color(0xFF2A2A40))
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text("Working on", fontSize = 11.sp, color = Color(0xFF8888AA))
+                        selectedTasks.forEach { task ->
+                            Text("· ${task.displayName}", fontSize = 12.sp, color = Color.White, maxLines = 1)
+                        }
                     }
                 }
             }
@@ -185,9 +168,8 @@ fun ClockScreen(
                     if (isClockedIn) {
                         clockService.checkOvertimeBeforeClockOut(u.id, u.workspaceId, plannedHoursToday) { isOvertime ->
                             android.os.Handler(android.os.Looper.getMainLooper()).post {
-                                if (isOvertime) {
-                                    showOvertimeSheet = true
-                                } else {
+                                if (isOvertime) showOvertimeSheet = true
+                                else {
                                     val locationId = matchedOfficeByWiFi?.id ?: matchedOfficeByGPS?.id ?: "unknown"
                                     clockService.clockOut(u.id, u.workspaceId, locationId, managerId = u.managerId, plannedHours = plannedHoursToday)
                                 }
@@ -195,8 +177,12 @@ fun ClockScreen(
                         }
                     } else {
                         if (!isLocationVerified) return@Button
-                        val locationId = matchedOfficeByWiFi?.id ?: matchedOfficeByGPS?.id ?: "unknown"
-                        clockService.clockIn(u.id, u.workspaceId, locationId)
+                        if (isAvailable && tasks.isNotEmpty()) {
+                            showTaskSheet = true
+                        } else {
+                            val locationId = matchedOfficeByWiFi?.id ?: matchedOfficeByGPS?.id ?: "unknown"
+                            clockService.clockIn(u.id, u.workspaceId, locationId, taskIds = selectedTasks.map { it.id }.ifEmpty { null })
+                        }
                     }
                 },
                 enabled = (isLocationVerified || isClockedIn) && !isLoading,
@@ -211,16 +197,8 @@ fun ClockScreen(
                     CircularProgressIndicator(color = Color.White, modifier = Modifier.size(28.dp))
                 } else {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = if (isClockedIn) "⏹" else "▶",
-                            fontSize = 28.sp
-                        )
-                        Text(
-                            text = if (isClockedIn) "Clock Out" else "Clock In",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.White
-                        )
+                        Text(text = if (isClockedIn) "⏹" else "▶", fontSize = 28.sp)
+                        Text(text = if (isClockedIn) "Clock Out" else "Clock In", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
                     }
                 }
             }
@@ -228,8 +206,7 @@ fun ClockScreen(
             if (!isLocationVerified && !isClockedIn) {
                 Text(
                     text = "You must be at an office location to clock in",
-                    fontSize = 12.sp,
-                    color = Color(0xFF8888AA),
+                    fontSize = 12.sp, color = Color(0xFF8888AA),
                     modifier = Modifier.padding(top = 12.dp, start = 32.dp, end = 32.dp),
                     textAlign = TextAlign.Center
                 )
@@ -239,21 +216,93 @@ fun ClockScreen(
         }
     }
 
+    // Task Selection Sheet
+    if (showTaskSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showTaskSheet = false },
+            containerColor = Color(0xFF0F0F1A)
+        ) {
+            Column(modifier = Modifier.fillMaxWidth().padding(24.dp)) {
+                Text("What are you working on?", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("Select tasks you're working on", fontSize = 13.sp, color = Color(0xFF8888AA))
+                Spacer(modifier = Modifier.height(16.dp))
+
+                if (tasksLoading) {
+                    Box(modifier = Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = Color(0xFF5B8EF5))
+                    }
+                } else {
+                    LazyColumn(modifier = Modifier.heightIn(max = 400.dp)) {
+                        items(tasks) { task ->
+                            val isSelected = selectedTasks.contains(task)
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        selectedTasks = if (isSelected) selectedTasks - task else selectedTasks + task
+                                    }
+                                    .padding(vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Text(if (isSelected) "✅" else "⬜", fontSize = 18.sp)
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(task.displayName, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color.White, maxLines = 2)
+                                    if (task.status.isNotEmpty()) {
+                                        Text(task.status, fontSize = 11.sp, color = Color(0xFF8888AA))
+                                    }
+                                }
+                            }
+                            Divider(color = Color(0xFF2A2A40))
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedButton(
+                        onClick = {
+                            showTaskSheet = false
+                            val u = user ?: return@OutlinedButton
+                            val locationId = matchedOfficeByWiFi?.id ?: matchedOfficeByGPS?.id ?: "unknown"
+                            clockService.clockIn(u.id, u.workspaceId, locationId, taskIds = null)
+                        },
+                        modifier = Modifier.weight(1f).height(48.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF8888AA))
+                    ) {
+                        Text("Skip")
+                    }
+                    Button(
+                        onClick = {
+                            showTaskSheet = false
+                            val u = user ?: return@Button
+                            val locationId = matchedOfficeByWiFi?.id ?: matchedOfficeByGPS?.id ?: "unknown"
+                            clockService.clockIn(u.id, u.workspaceId, locationId, taskIds = selectedTasks.map { it.id }.ifEmpty { null })
+                        },
+                        modifier = Modifier.weight(1f).height(48.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2DD47E))
+                    ) {
+                        Text("Clock In", fontWeight = FontWeight.SemiBold)
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
+    }
+
+    // Overtime Sheet
     if (showOvertimeSheet) {
         ModalBottomSheet(
             onDismissRequest = { showOvertimeSheet = false },
             containerColor = Color(0xFF0F0F1A)
         ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
+            Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Text("Overtime Note", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                Text(
-                    "You have worked more than your planned hours today. Please explain why.",
-                    fontSize = 14.sp,
-                    color = Color(0xFF8888AA)
-                )
+                Text("You have worked more than your planned hours today. Please explain why.", fontSize = 14.sp, color = Color(0xFF8888AA))
                 OutlinedTextField(
                     value = overtimeNote,
                     onValueChange = { overtimeNote = it },
@@ -275,9 +324,7 @@ fun ClockScreen(
                         overtimeNote = ""
                     },
                     enabled = overtimeNote.isNotBlank(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp),
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF5B8EF5))
                 ) {

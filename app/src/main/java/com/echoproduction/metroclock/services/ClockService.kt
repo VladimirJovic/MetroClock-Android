@@ -64,15 +64,17 @@ class ClockService {
             }
     }
 
-    fun clockIn(userId: String, workspaceId: String, locationId: String) {
+    fun clockIn(userId: String, workspaceId: String, locationId: String, taskIds: List<String>? = null) {
         _isLoading.value = true
-        val event = hashMapOf(
+        val event = hashMapOf<String, Any>(
             "userId" to userId,
             "workspaceId" to workspaceId,
             "type" to "clockIn",
             "timestamp" to Timestamp.now(),
             "locationId" to locationId
         )
+        taskIds?.let { if (it.isNotEmpty()) event["taskIds"] = it }
+
         db.collection("clockEvents").add(event)
             .addOnSuccessListener {
                 _isLoading.value = false
@@ -84,7 +86,7 @@ class ClockService {
     fun clockOut(
         userId: String, workspaceId: String, locationId: String,
         overtimeNote: String? = null, managerId: String? = null,
-        plannedHours: Double = 8.0
+        plannedHours: Double = 0.0
     ) {
         _isLoading.value = true
         val officeHours = calculateOfficeHoursToNow()
@@ -157,15 +159,11 @@ class ClockService {
         callback: (Double) -> Unit
     ) {
         val startOfDay = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
+            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
         }.time
         val endOfDay = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 23)
-            set(Calendar.MINUTE, 59)
-            set(Calendar.SECOND, 59)
+            set(Calendar.HOUR_OF_DAY, 23); set(Calendar.MINUTE, 59); set(Calendar.SECOND, 59)
         }.time
 
         db.collection("requests")
