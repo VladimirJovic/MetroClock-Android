@@ -23,8 +23,7 @@ import com.echoproduction.metroclock.services.ExternalTask
 import com.echoproduction.metroclock.services.TaskService
 import com.echoproduction.metroclock.ui.theme.LocalMcColors
 import com.echoproduction.metroclock.ui.theme.McOrange
-import com.google.accompanist.swiperefresh.SwipeRefresh
-import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
 import java.text.SimpleDateFormat
@@ -123,9 +122,10 @@ fun RequestsScreen(
                     CircularProgressIndicator(color = McOrange)
                 }
             } else {
-                SwipeRefresh(
-                    state = rememberSwipeRefreshState(isRefreshing),
-                    onRefresh = { isRefreshing = true; loadRequests { isRefreshing = false } }
+                PullToRefreshBox(
+                    isRefreshing = isRefreshing,
+                    onRefresh = { isRefreshing = true; loadRequests { isRefreshing = false } },
+                    modifier = Modifier.fillMaxSize()
                 ) {
                     if (requests.isEmpty()) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -146,7 +146,6 @@ fun RequestsScreen(
 
         if (showNewRequestSheet) {
             NewRequestBottomSheet(
-                user = user,
                 tasks = if (isAvailable) tasks else emptyList(),
                 existingRequests = requests,
                 onDismiss = { showNewRequestSheet = false },
@@ -186,14 +185,8 @@ fun RequestsScreen(
                                     val to = Calendar.getInstance().apply { time = dateTo
                                         set(Calendar.HOUR_OF_DAY, 23); set(Calendar.MINUTE, 59); set(Calendar.SECOND, 59)
                                     }.time
-                                    d >= from && d <= to
+                                    d in from..to
                                 }
-                    }
-                    val typeLabel = when (type) {
-                        RequestType.REMOTE_WORK -> "Remote Work"
-                        RequestType.SICK_LEAVE  -> "Sick Leave"
-                        RequestType.DAY_OFF     -> "Day Off"
-                        RequestType.OVERTIME    -> "Overtime"
                     }
                     // Notification sent automatically by Cloud Function (onRequestCreated)
                     val toDelete = overlapping.size
@@ -325,7 +318,6 @@ fun RequestCard(request: Request) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewRequestBottomSheet(
-    user: com.echoproduction.metroclock.models.MCUser?,
     tasks: List<ExternalTask>,
     existingRequests: List<Request>,
     onDismiss: () -> Unit,
@@ -333,15 +325,13 @@ fun NewRequestBottomSheet(
 ) {
     var selectedType by remember { mutableStateOf(RequestType.REMOTE_WORK) }
     var note by remember { mutableStateOf("") }
-    var remoteHours by remember { mutableStateOf(8) }
-    var remoteMinutes by remember { mutableStateOf(0) }
+    var remoteHours by remember { mutableIntStateOf(8) }
+    var remoteMinutes by remember { mutableIntStateOf(0) }
     var selectedDateFrom by remember { mutableStateOf(Date()) }
     var selectedDateTo by remember { mutableStateOf(Date()) }
     var selectedTasks by remember { mutableStateOf<Set<ExternalTask>>(emptySet()) }
     var showDateFromPicker by remember { mutableStateOf(false) }
     var showDateToPicker by remember { mutableStateOf(false) }
-    var showOverlapWarning by remember { mutableStateOf(false) }
-
     val dateFromPickerState = rememberDatePickerState(initialSelectedDateMillis = selectedDateFrom.time)
     val dateToPickerState = rememberDatePickerState(initialSelectedDateMillis = selectedDateTo.time)
     val dateDisplayFmt = SimpleDateFormat("d MMM yyyy", Locale.getDefault())
@@ -356,7 +346,7 @@ fun NewRequestBottomSheet(
                     set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0) }.time
                 val to = Calendar.getInstance().apply { time = selectedDateTo
                     set(Calendar.HOUR_OF_DAY, 23); set(Calendar.MINUTE, 59); set(Calendar.SECOND, 59) }.time
-                d >= from && d <= to
+                d in from..to
             }
         }.flatMap { it.allDates() }.filter { reqDate ->
             val d = Calendar.getInstance().apply { time = reqDate
@@ -365,7 +355,7 @@ fun NewRequestBottomSheet(
                 set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0) }.time
             val to = Calendar.getInstance().apply { time = selectedDateTo
                 set(Calendar.HOUR_OF_DAY, 23); set(Calendar.MINUTE, 59); set(Calendar.SECOND, 59) }.time
-            d >= from && d <= to
+            d in from..to
         }
     }
 
@@ -463,37 +453,35 @@ fun NewRequestBottomSheet(
             }
 
             // Date to
-            if (true) {
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth()
+                        .background(LocalMcColors.current.background, RoundedCornerShape(10.dp))
+                        .clickable { showDateToPicker = true }
+                        .padding(14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("To", fontSize = 14.sp, color = LocalMcColors.current.textSecondary)
+                    Text(dateDisplayFmt.format(selectedDateTo), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = LocalMcColors.current.text)
+                }
+            }
+
+            // Overlap warning
+            if (overlappingDays.isNotEmpty()) {
                 item {
+                    val fmt = SimpleDateFormat("d MMM", Locale.getDefault())
                     Row(
                         modifier = Modifier.fillMaxWidth()
-                            .background(LocalMcColors.current.background, RoundedCornerShape(10.dp))
-                            .clickable { showDateToPicker = true }
-                            .padding(14.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                            .background(Color(0xFFF5A623).copy(alpha = 0.08f), RoundedCornerShape(10.dp))
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text("To", fontSize = 14.sp, color = LocalMcColors.current.textSecondary)
-                        Text(dateDisplayFmt.format(selectedDateTo), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = LocalMcColors.current.text)
-                    }
-                }
-
-                // Overlap warning
-                if (overlappingDays.isNotEmpty()) {
-                    item {
-                        val fmt = SimpleDateFormat("d MMM", Locale.getDefault())
-                        Row(
-                            modifier = Modifier.fillMaxWidth()
-                                .background(Color(0xFFF5A623).copy(alpha = 0.08f), RoundedCornerShape(10.dp))
-                                .padding(12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text("!", fontSize = 14.sp, color = Color(0xFFF5A623), fontWeight = FontWeight.Bold)
-                            Text(
-                                "Existing request covers: ${overlappingDays.take(3).joinToString(", ") { fmt.format(it) }}${if (overlappingDays.size > 3) "..." else ""}. Submitting will replace it.",
-                                fontSize = 12.sp, color = LocalMcColors.current.textSecondary
-                            )
-                        }
+                        Text("!", fontSize = 14.sp, color = Color(0xFFF5A623), fontWeight = FontWeight.Bold)
+                        Text(
+                            "Existing request covers: ${overlappingDays.take(3).joinToString(", ") { fmt.format(it) }}${if (overlappingDays.size > 3) "..." else ""}. Submitting will replace it.",
+                            fontSize = 12.sp, color = LocalMcColors.current.textSecondary
+                        )
                     }
                 }
             }

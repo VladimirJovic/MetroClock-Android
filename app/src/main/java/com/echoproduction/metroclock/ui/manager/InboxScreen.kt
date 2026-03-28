@@ -22,8 +22,7 @@ import com.echoproduction.metroclock.services.AuthService
 import com.echoproduction.metroclock.ui.employee.dateRangeLabel
 import com.echoproduction.metroclock.ui.theme.LocalMcColors
 import com.echoproduction.metroclock.ui.theme.McOrange
-import com.google.accompanist.swiperefresh.SwipeRefresh
-import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
 import java.text.SimpleDateFormat
@@ -125,9 +124,10 @@ fun InboxScreen(authService: AuthService) {
                     CircularProgressIndicator(color = McOrange)
                 }
             } else {
-                SwipeRefresh(
-                    state = rememberSwipeRefreshState(isRefreshing),
-                    onRefresh = { isRefreshing = true; loadRequests { isRefreshing = false } }
+                PullToRefreshBox(
+                    isRefreshing = isRefreshing,
+                    onRefresh = { isRefreshing = true; loadRequests { isRefreshing = false } },
+                    modifier = Modifier.fillMaxSize()
                 ) {
                     if (requests.isEmpty()) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -172,12 +172,6 @@ fun InboxScreen(authService: AuthService) {
                 .addOnSuccessListener {
                     requests = requests.map { if (it.id == request.id) it.copy(status = status, managerNote = note) else it }
                     selectedRequest = null
-                    val typeLabel = when (request.type) {
-                        RequestType.REMOTE_WORK -> "Remote Work"
-                        RequestType.SICK_LEAVE  -> "Sick Leave"
-                        RequestType.DAY_OFF     -> "Day Off"
-                        RequestType.OVERTIME    -> "Overtime"
-                    }
                     // Notification sent automatically by Cloud Function (onRequestUpdated)
                 }
         }
@@ -227,8 +221,8 @@ fun ManagerNewRequestSheet(
 ) {
     var selectedType by remember { mutableStateOf(RequestType.REMOTE_WORK) }
     var note by remember { mutableStateOf("") }
-    var remoteHours by remember { mutableStateOf(8) }
-    var remoteMinutes by remember { mutableStateOf(0) }
+    var remoteHours by remember { mutableIntStateOf(8) }
+    var remoteMinutes by remember { mutableIntStateOf(0) }
     var selectedDateFrom by remember { mutableStateOf(Date()) }
     var selectedDateTo by remember { mutableStateOf(Date()) }
     var showDateFromPicker by remember { mutableStateOf(false) }

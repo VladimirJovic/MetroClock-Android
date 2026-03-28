@@ -17,13 +17,14 @@ import com.echoproduction.metroclock.models.ClockEventType
 import com.echoproduction.metroclock.services.AuthService
 import com.echoproduction.metroclock.ui.theme.LocalMcColors
 import com.echoproduction.metroclock.ui.theme.McOrange
-import com.google.accompanist.swiperefresh.SwipeRefresh
-import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
 import java.text.SimpleDateFormat
 import java.util.*
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MyHoursScreen(authService: AuthService) {
     val user by authService.currentUser.collectAsState()
@@ -97,12 +98,10 @@ fun MyHoursScreen(authService: AuthService) {
                     CircularProgressIndicator(color = McOrange)
                 }
             } else {
-                SwipeRefresh(
-                    state = rememberSwipeRefreshState(isRefreshing),
-                    onRefresh = {
-                        isRefreshing = true
-                        loadEvents { isRefreshing = false }
-                    }
+                PullToRefreshBox(
+                    isRefreshing = isRefreshing,
+                    onRefresh = { isRefreshing = true; loadEvents { isRefreshing = false } },
+                    modifier = Modifier.fillMaxSize()
                 ) {
                     if (groupedByDay.isEmpty()) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

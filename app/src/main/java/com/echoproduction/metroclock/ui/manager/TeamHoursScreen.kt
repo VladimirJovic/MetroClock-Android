@@ -22,8 +22,7 @@ import com.echoproduction.metroclock.services.AuthService
 import com.echoproduction.metroclock.services.BadgeCounts
 import com.echoproduction.metroclock.ui.theme.LocalMcColors
 import com.echoproduction.metroclock.ui.theme.McOrange
-import com.google.accompanist.swiperefresh.SwipeRefresh
-import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
 import java.text.SimpleDateFormat
@@ -85,6 +84,7 @@ data class DayRecord(
 
 // MARK: - TeamHoursScreen
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TeamHoursScreen(authService: AuthService, badges: BadgeCounts = BadgeCounts()) {
     val user by authService.currentUser.collectAsState()
@@ -118,7 +118,7 @@ fun TeamHoursScreen(authService: AuthService, badges: BadgeCounts = BadgeCounts(
             if (isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = McOrange) }
             } else {
-                SwipeRefresh(state = rememberSwipeRefreshState(isRefreshing), onRefresh = { isRefreshing = true; loadTeam { isRefreshing = false } }) {
+                PullToRefreshBox(isRefreshing = isRefreshing, onRefresh = { isRefreshing = true; loadTeam { isRefreshing = false } }, modifier = Modifier.fillMaxSize()) {
                     if (teamMembers.isEmpty()) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("No team members found", color = LocalMcColors.current.textSecondary) }
                     } else {
@@ -171,8 +171,8 @@ fun MemberHoursSheet(member: TeamMemberInfo, onDismiss: () -> Unit) {
     var editingEvent by remember { mutableStateOf<DayClockEvent?>(null) }
     var addingEventType by remember { mutableStateOf<ClockEventType?>(null) }
     var addingForRecord by remember { mutableStateOf<DayRecord?>(null) }
-    var editHour by remember { mutableStateOf(9) }
-    var editMinute by remember { mutableStateOf(0) }
+    var editHour by remember { mutableIntStateOf(9) }
+    var editMinute by remember { mutableIntStateOf(0) }
     var showEventSheet by remember { mutableStateOf(false) }
     var validationError by remember { mutableStateOf<String?>(null) }
 
