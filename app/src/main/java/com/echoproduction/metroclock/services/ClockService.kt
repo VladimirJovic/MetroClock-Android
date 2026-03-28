@@ -33,6 +33,7 @@ class ClockService {
 
         db.collection("clockEvents")
             .whereEqualTo("userId", userId)
+            .whereGreaterThanOrEqualTo("timestamp", Timestamp(startOfDay))
             .get()
             .addOnSuccessListener { snapshot ->
                 val all = snapshot.documents.mapNotNull { doc ->
@@ -56,8 +57,7 @@ class ClockService {
                         correctedHours = (data["correctedHours"] as? Double)
                             ?: (data["correctedHours"] as? Long)?.toDouble()
                     )
-                }.filter { it.timestamp.toDate() >= startOfDay }
-                    .sortedBy { it.timestamp.toDate() }
+                }.sortedBy { it.timestamp.toDate() }
 
                 _todayEvents.value = all
                 _isClockedIn.value = all.lastOrNull()?.type == ClockEventType.CLOCK_IN
@@ -162,8 +162,10 @@ class ClockService {
             set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
             set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
         }.time
-        val endOfDay = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 23); set(Calendar.MINUTE, 59); set(Calendar.SECOND, 59)
+        val startOfTomorrow = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+            add(Calendar.DAY_OF_YEAR, 1)
         }.time
 
         db.collection("requests")
@@ -171,7 +173,7 @@ class ClockService {
             .whereEqualTo("type", "remoteWork")
             .whereEqualTo("status", "approved")
             .whereGreaterThanOrEqualTo("date", Timestamp(startOfDay))
-            .whereLessThanOrEqualTo("date", Timestamp(endOfDay))
+            .whereLessThan("date", Timestamp(startOfTomorrow))
             .get()
             .addOnSuccessListener { snapshot ->
                 val total = snapshot.documents.sumOf { doc ->

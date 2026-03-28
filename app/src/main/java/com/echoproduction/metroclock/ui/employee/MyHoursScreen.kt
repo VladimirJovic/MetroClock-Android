@@ -15,6 +15,8 @@ import androidx.compose.ui.unit.sp
 import com.echoproduction.metroclock.models.ClockEvent
 import com.echoproduction.metroclock.models.ClockEventType
 import com.echoproduction.metroclock.services.AuthService
+import com.echoproduction.metroclock.ui.theme.LocalMcColors
+import com.echoproduction.metroclock.ui.theme.McOrange
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.google.firebase.Timestamp
@@ -79,20 +81,20 @@ fun MyHoursScreen(authService: AuthService) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF080810))
+            .background(LocalMcColors.current.background)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             Text(
                 "My Hours",
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White,
+                color = LocalMcColors.current.text,
                 modifier = Modifier.padding(24.dp)
             )
 
             if (isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = Color(0xFF5B8EF5))
+                    CircularProgressIndicator(color = McOrange)
                 }
             } else {
                 SwipeRefresh(
@@ -104,7 +106,7 @@ fun MyHoursScreen(authService: AuthService) {
                 ) {
                     if (groupedByDay.isEmpty()) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text("No hours recorded yet", color = Color(0xFF8888AA))
+                            Text("No hours recorded yet", color = LocalMcColors.current.textSecondary)
                         }
                     } else {
                         LazyColumn(
@@ -131,7 +133,7 @@ fun MyHoursScreen(authService: AuthService) {
                                     Column(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .background(Color(0xFF0F0F1A), RoundedCornerShape(14.dp))
+                                            .background(LocalMcColors.current.surface, RoundedCornerShape(14.dp))
                                             .padding(16.dp)
                                     ) {
                                         Row(
@@ -142,13 +144,13 @@ fun MyHoursScreen(authService: AuthService) {
                                                 text = parsedDate?.let { dateFormat.format(it) } ?: dayKey,
                                                 fontSize = 14.sp,
                                                 fontWeight = FontWeight.SemiBold,
-                                                color = Color.White
+                                                color = LocalMcColors.current.text
                                             )
                                             Text(
                                                 text = hoursDisplay,
                                                 fontSize = 14.sp,
                                                 fontWeight = FontWeight.Bold,
-                                                color = Color(0xFF5B8EF5)
+                                                color = McOrange
                                             )
                                         }
 
@@ -162,11 +164,11 @@ fun MyHoursScreen(authService: AuthService) {
                                                 verticalAlignment = Alignment.CenterVertically
                                             ) {
                                                 Text("▶", fontSize = 10.sp, color = Color(0xFF2DD47E))
-                                                Text(timeFormat.format(ci.timestamp.toDate()), fontSize = 12.sp, color = Color(0xFF8888AA))
+                                                Text(timeFormat.format(ci.timestamp.toDate()), fontSize = 12.sp, color = LocalMcColors.current.textSecondary)
                                                 if (co != null) {
-                                                    Text("→", fontSize = 10.sp, color = Color(0xFF8888AA))
+                                                    Text("→", fontSize = 10.sp, color = LocalMcColors.current.textSecondary)
                                                     Text("⏹", fontSize = 10.sp, color = Color(0xFFF55252))
-                                                    Text(timeFormat.format(co.timestamp.toDate()), fontSize = 12.sp, color = Color(0xFF8888AA))
+                                                    Text(timeFormat.format(co.timestamp.toDate()), fontSize = 12.sp, color = LocalMcColors.current.textSecondary)
                                                 } else {
                                                     Text("→ still clocked in", fontSize = 12.sp, color = Color(0xFF2DD47E))
                                                 }

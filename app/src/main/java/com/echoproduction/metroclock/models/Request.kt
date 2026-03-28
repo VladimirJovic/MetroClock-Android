@@ -14,6 +14,8 @@ data class Request(
     val type: RequestType = RequestType.REMOTE_WORK,
     val status: RequestStatus = RequestStatus.PENDING,
     val date: Timestamp = Timestamp.now(),
+    val dateFrom: Timestamp = Timestamp.now(),
+    val dateTo: Timestamp = Timestamp.now(),
     val employeeNote: String? = null,
     val managerNote: String? = null,
     val createdAt: Timestamp = Timestamp.now(),

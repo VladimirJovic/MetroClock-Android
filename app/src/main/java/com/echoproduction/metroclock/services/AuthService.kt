@@ -40,7 +40,7 @@ class AuthService {
                 _isLoading.value = false
                 val data = doc.data ?: return@addOnSuccessListener
                 val roleStr = (data["role"] as? String)?.uppercase() ?: "EMPLOYEE"
-                _currentUser.value = MCUser(
+                val user = MCUser(
                     id = doc.id,
                     email = data["email"] as? String ?: "",
                     firstName = data["firstName"] as? String ?: "",
@@ -48,7 +48,6 @@ class AuthService {
                     role = UserRole.valueOf(roleStr),
                     workspaceId = data["workspaceId"] as? String ?: "",
                     managerId = data["managerId"] as? String,
-                    profileImageURL = data["profileImageURL"] as? String,
                     isActive = data["isActive"] as? Boolean ?: true,
                     workDays = (data["workDays"] as? List<*>)?.mapNotNull { (it as? Long)?.toInt() },
                     dailyHours = (data["dailyHours"] as? Map<*, *>)?.mapNotNull { (k, v) ->
@@ -60,6 +59,13 @@ class AuthService {
                     currency = data["currency"] as? String,
                     overtimeMultiplier = (data["overtimeMultiplier"] as? Double) ?: (data["overtimeMultiplier"] as? Long)?.toDouble()
                 )
+                if (!user.isActive) {
+                    auth.signOut()
+                    _errorMessage.value = "Your account has been deactivated. Contact your administrator."
+                    _isLoading.value = false
+                    return@addOnSuccessListener
+                }
+                _currentUser.value = user
             }
             .addOnFailureListener {
                 _isLoading.value = false

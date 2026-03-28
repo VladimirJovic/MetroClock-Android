@@ -13,6 +13,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.echoproduction.metroclock.models.UserRole
 import com.echoproduction.metroclock.services.AuthService
+import com.echoproduction.metroclock.ui.theme.LocalMcColors
+import com.echoproduction.metroclock.ui.theme.McOrange
 
 @Composable
 fun ProfileScreen(authService: AuthService) {
@@ -21,7 +23,7 @@ fun ProfileScreen(authService: AuthService) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF080810))
+            .background(LocalMcColors.current.background)
     ) {
         Column(
             modifier = Modifier
@@ -29,13 +31,18 @@ fun ProfileScreen(authService: AuthService) {
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text("Profile", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            Text(
+                "Profile",
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                color = LocalMcColors.current.text
+            )
 
             user?.let { u ->
                 Box(
                     modifier = Modifier
                         .size(80.dp)
-                        .background(Color(0xFF1E1E30), RoundedCornerShape(24.dp))
+                        .background(McOrange.copy(alpha = 0.12f), RoundedCornerShape(24.dp))
                         .align(Alignment.CenterHorizontally),
                     contentAlignment = Alignment.Center
                 ) {
@@ -43,7 +50,7 @@ fun ProfileScreen(authService: AuthService) {
                         text = "${u.firstName.firstOrNull() ?: ""}${u.lastName.firstOrNull() ?: ""}",
                         fontSize = 28.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF5B8EF5)
+                        color = McOrange
                     )
                 }
 
@@ -52,14 +59,14 @@ fun ProfileScreen(authService: AuthService) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Color(0xFF0F0F1A), RoundedCornerShape(16.dp))
+                        .background(LocalMcColors.current.surface, RoundedCornerShape(16.dp))
                         .padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     ProfileRow(label = "Name", value = u.fullName)
-                    Divider(color = Color(0xFF2A2A40))
+                    HorizontalDivider(color = LocalMcColors.current.border)
                     ProfileRow(label = "Email", value = u.email)
-                    Divider(color = Color(0xFF2A2A40))
+                    HorizontalDivider(color = LocalMcColors.current.border)
                     ProfileRow(
                         label = "Role",
                         value = when (u.role) {
@@ -78,9 +85,17 @@ fun ProfileScreen(authService: AuthService) {
                         .fillMaxWidth()
                         .height(52.dp),
                     shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E1E30))
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFF55252).copy(alpha = 0.12f)
+                    )
                 ) {
-                    Text("Log Out", fontSize = 16.sp, color = Color(0xFFF55252), fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "LOG OUT",
+                        fontSize = 14.sp,
+                        color = Color(0xFFF55252),
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.5.sp
+                    )
                 }
             }
         }
@@ -93,7 +108,7 @@ fun ProfileRow(label: String, value: String) {
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(label, fontSize = 13.sp, color = Color(0xFF8888AA))
-        Text(value, fontSize = 13.sp, color = Color.White, fontWeight = FontWeight.Medium)
+        Text(label, fontSize = 13.sp, color = LocalMcColors.current.textSecondary)
+        Text(value, fontSize = 13.sp, color = LocalMcColors.current.text, fontWeight = FontWeight.Medium)
     }
 }

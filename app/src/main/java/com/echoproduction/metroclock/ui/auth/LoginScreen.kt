@@ -15,6 +15,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.echoproduction.metroclock.services.AuthService
+import com.echoproduction.metroclock.ui.theme.LocalMcColors
+import com.echoproduction.metroclock.ui.theme.McOrange
 
 @Composable
 fun LoginScreen(authService: AuthService) {
@@ -26,7 +28,7 @@ fun LoginScreen(authService: AuthService) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF080810)),
+            .background(LocalMcColors.current.background),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -40,46 +42,52 @@ fun LoginScreen(authService: AuthService) {
                 text = "MetroClock",
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = McOrange,
+                letterSpacing = 2.sp
             )
             Text(
                 text = "by Echo Production",
-                fontSize = 14.sp,
-                color = Color(0xFF8888AA)
+                fontSize = 13.sp,
+                color = LocalMcColors.current.textSecondary,
+                letterSpacing = 1.5.sp
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             OutlinedTextField(
                 value = email,
                 onValueChange = { email = it },
-                label = { Text("Email", color = Color(0xFF8888AA)) },
+                label = { Text("Email", color = LocalMcColors.current.textSecondary) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 modifier = Modifier.fillMaxWidth(),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color(0xFF5B8EF5),
-                    unfocusedBorderColor = Color(0xFF2A2A40),
+                    focusedBorderColor = McOrange,
+                    unfocusedBorderColor = LocalMcColors.current.border,
                     focusedTextColor = Color.White,
                     unfocusedTextColor = Color.White,
-                    cursorColor = Color(0xFF5B8EF5)
+                    cursorColor = McOrange,
+                    unfocusedContainerColor = LocalMcColors.current.surface,
+                    focusedContainerColor = LocalMcColors.current.surface
                 )
             )
 
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
-                label = { Text("Password", color = Color(0xFF8888AA)) },
+                label = { Text("Password", color = LocalMcColors.current.textSecondary) },
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 modifier = Modifier.fillMaxWidth(),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color(0xFF5B8EF5),
-                    unfocusedBorderColor = Color(0xFF2A2A40),
+                    focusedBorderColor = McOrange,
+                    unfocusedBorderColor = LocalMcColors.current.border,
                     focusedTextColor = Color.White,
                     unfocusedTextColor = Color.White,
-                    cursorColor = Color(0xFF5B8EF5)
+                    cursorColor = McOrange,
+                    unfocusedContainerColor = LocalMcColors.current.surface,
+                    focusedContainerColor = LocalMcColors.current.surface
                 )
             )
 
@@ -98,12 +106,20 @@ fun LoginScreen(authService: AuthService) {
                     .fillMaxWidth()
                     .height(52.dp),
                 shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF5B8EF5))
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = McOrange,
+                    disabledContainerColor = LocalMcColors.current.border
+                )
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp))
                 } else {
-                    Text("Sign In", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "SIGN IN",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 2.sp
+                    )
                 }
             }
         }

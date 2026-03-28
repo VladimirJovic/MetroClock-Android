@@ -40,7 +40,18 @@ class TaskService {
     private val _isAvailable = MutableStateFlow(false)
     val isAvailable: StateFlow<Boolean> = _isAvailable
 
+    private var lastConfig: WorkspaceConfig? = null
+    private var lastMetroUserId: String? = null
+
+    fun refresh() {
+        val config = lastConfig ?: return
+        val userId = lastMetroUserId ?: return
+        fetchTasks(config, userId)
+    }
+
     fun fetchTasks(config: WorkspaceConfig, metroUserId: String) {
+        lastConfig = config
+        lastMetroUserId = metroUserId
         _tasks.value = emptyList()
 
         // ClickUp

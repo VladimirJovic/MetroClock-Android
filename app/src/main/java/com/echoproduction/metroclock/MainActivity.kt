@@ -1,10 +1,16 @@
 package com.echoproduction.metroclock
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
+import androidx.core.content.ContextCompat
+import com.echoproduction.metroclock.notifications.NotificationHelper
 import com.echoproduction.metroclock.services.AuthService
 import com.echoproduction.metroclock.services.ClockService
 import com.echoproduction.metroclock.services.LocationService
@@ -26,11 +32,26 @@ class MainActivity : ComponentActivity() {
     private lateinit var wifiService: WiFiService
     private lateinit var locationService: LocationService
 
+    private val notificationPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* result ignored */ }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         authService.checkCurrentUser()
         wifiService = WiFiService(this)
         locationService = LocationService(this)
+
+        // Create notification channel (required on Android 8+)
+        NotificationHelper.createNotificationChannel(this)
+
+        // Request POST_NOTIFICATIONS permission (required on Android 13+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
 
         enableEdgeToEdge()
         setContent {
@@ -56,6 +77,8 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(user) {
                     user?.let {
                         workspaceService.fetchWorkspaceConfig(it.workspaceId)
+                        // Save FCM token linked to this user account
+                        NotificationHelper.saveToken(it.id)
                     }
                 }
 

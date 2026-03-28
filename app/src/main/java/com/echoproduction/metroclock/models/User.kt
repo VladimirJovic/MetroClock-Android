@@ -10,7 +10,6 @@ data class MCUser(
     val role: UserRole = UserRole.EMPLOYEE,
     val workspaceId: String = "",
     val managerId: String? = null,
-    val profileImageURL: String? = null,
     val isActive: Boolean = true,
     val workDays: List<Int>? = null,
     val dailyHours: Map<String, Double>? = null,
