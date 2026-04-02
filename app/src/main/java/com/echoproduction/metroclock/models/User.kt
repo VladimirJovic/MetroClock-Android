@@ -15,7 +15,8 @@ data class MCUser(
     val dailyHours: Map<String, Double>? = null,
     val hourlyRate: Double? = null,
     val currency: String? = null,
-    val overtimeMultiplier: Double? = null
+    val overtimeMultiplier: Double? = null,
+    val offsiteMultiplier: Double? = null
 ) {
     val fullName: String get() = "$firstName $lastName"
 }

@@ -28,7 +28,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import java.text.SimpleDateFormat
 import java.util.*
 
-data class TeamMemberInfo(val userId: String, val name: String, val workspaceId: String)
+data class TeamMemberInfo(val userId: String, val name: String, val workspaceId: String, val managerId: String = "")
 
 data class DayClockEvent(
     val id: String, val type: ClockEventType, val timestamp: Date,
@@ -37,10 +37,13 @@ data class DayClockEvent(
 
 data class RemoteWorkEntry(val id: String, val hours: Double, val note: String?)
 
+data class OffsiteEntry(val id: String, val note: String?)
+
 data class DayRecord(
     val dateKey: String,
     val events: List<DayClockEvent>,
-    val remoteEntries: List<RemoteWorkEntry>
+    val remoteEntries: List<RemoteWorkEntry>,
+    val offsiteEntries: List<OffsiteEntry> = emptyList()
 ) {
     val displayDate: String get() {
         val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
@@ -65,9 +68,11 @@ data class DayRecord(
     val workType: String? get() {
         val hasOffice = events.any { it.type == ClockEventType.CLOCK_IN }
         val hasRemote = remoteEntries.isNotEmpty()
+        val hasOffsite = offsiteEntries.isNotEmpty()
         return when {
             hasOffice && hasRemote -> "Hybrid"
             hasRemote              -> "Remote"
+            hasOffsite             -> "Offsite"
             else                   -> null
         }
     }
@@ -100,7 +105,7 @@ fun TeamHoursScreen(authService: AuthService, badges: BadgeCounts = BadgeCounts(
                 .addOnSuccessListener { snap ->
                     teamMembers = snap.documents.mapNotNull { doc ->
                         val d = doc.data ?: return@mapNotNull null
-                        TeamMemberInfo(doc.id, "${d["firstName"] as? String ?: ""} ${d["lastName"] as? String ?: ""}".trim(), d["workspaceId"] as? String ?: "")
+                        TeamMemberInfo(doc.id, "${d["firstName"] as? String ?: ""} ${d["lastName"] as? String ?: ""}".trim(), d["workspaceId"] as? String ?: "", manager.id)
                     }
                     onDone()
                 }.addOnFailureListener { onDone() }
@@ -205,21 +210,66 @@ fun MemberHoursSheet(member: TeamMemberInfo, onDismiss: () -> Unit) {
                         DayClockEvent(doc.id, type, ts, d["locationId"] as? String ?: "", d["overtimeNote"] as? String)
                     )
                 }
-                db.collection("requests").whereEqualTo("userId", member.userId).whereEqualTo("type", "remoteWork").whereEqualTo("status", "approved").get()
+                // Query by managerId (manager's own auth UID) — avoids security rule restriction on userId queries
+                db.collection("requests").whereEqualTo("managerId", member.managerId).whereEqualTo("type", "remoteWork").get()
                     .addOnSuccessListener { reqSnap ->
-                        isLoading = false
                         val remoteByDay = mutableMapOf<String, MutableList<RemoteWorkEntry>>()
                         reqSnap.documents.forEach { doc ->
                             val d = doc.data ?: return@forEach
-                            val ts = (d["date"] as? Timestamp)?.toDate() ?: return@forEach
+                            if ((d["userId"] as? String) != member.userId) return@forEach
+                            if ((d["status"] as? String) != "approved") return@forEach
+                            val ts = (d["dateFrom"] as? Timestamp)?.toDate()
+                                ?: (d["date"] as? Timestamp)?.toDate()
+                                ?: return@forEach
                             if (ts < thirtyDaysAgo) return@forEach
                             val hours = (d["remoteHours"] as? Double) ?: (d["remoteHours"] as? Long)?.toDouble() ?: return@forEach
+                            if (hours <= 0) return@forEach
                             remoteByDay.getOrPut(fmt.format(ts)) { mutableListOf() }.add(RemoteWorkEntry(doc.id, hours, d["employeeNote"] as? String))
                         }
-                        val allDays = mutableMapOf<String, DayRecord>()
-                        eventsByDay.forEach { (key, evs) -> allDays[key] = DayRecord(key, evs.sortedBy { it.timestamp }, remoteByDay[key] ?: emptyList()) }
-                        remoteByDay.forEach { (key, entries) -> if (!allDays.containsKey(key)) allDays[key] = DayRecord(key, emptyList(), entries) }
-                        records = allDays.values.sortedByDescending { it.dateKey }
+                        db.collection("requests").whereEqualTo("managerId", member.managerId).whereEqualTo("type", "offsiteWork").get()
+                            .addOnSuccessListener { offsiteSnap ->
+                                isLoading = false
+                                val offsiteByDay = mutableMapOf<String, MutableList<OffsiteEntry>>()
+                                offsiteSnap.documents.forEach { doc ->
+                                    val d = doc.data ?: return@forEach
+                                    if ((d["userId"] as? String) != member.userId) return@forEach
+                                    if ((d["status"] as? String) != "approved") return@forEach
+                                    val tsFrom = (d["dateFrom"] as? Timestamp)?.toDate()
+                                        ?: (d["date"] as? Timestamp)?.toDate()
+                                        ?: return@forEach
+                                    if (tsFrom < thirtyDaysAgo) return@forEach
+                                    val dateTo = (d["dateTo"] as? Timestamp)?.toDate() ?: tsFrom
+                                    val cal = Calendar.getInstance()
+                                    cal.time = tsFrom
+                                    cal.set(Calendar.HOUR_OF_DAY, 0); cal.set(Calendar.MINUTE, 0); cal.set(Calendar.SECOND, 0)
+                                    val endCal = Calendar.getInstance()
+                                    endCal.time = dateTo
+                                    endCal.set(Calendar.HOUR_OF_DAY, 0); endCal.set(Calendar.MINUTE, 0); endCal.set(Calendar.SECOND, 0)
+                                    while (!cal.time.after(endCal.time)) {
+                                        offsiteByDay.getOrPut(fmt.format(cal.time)) { mutableListOf() }
+                                            .add(OffsiteEntry(doc.id, d["employeeNote"] as? String))
+                                        cal.add(Calendar.DAY_OF_YEAR, 1)
+                                    }
+                                }
+                                val allDays = mutableMapOf<String, DayRecord>()
+                                eventsByDay.forEach { (key, evs) ->
+                                    allDays[key] = DayRecord(key, evs.sortedBy { it.timestamp }, remoteByDay[key] ?: emptyList(), offsiteByDay[key] ?: emptyList())
+                                }
+                                remoteByDay.forEach { (key, entries) ->
+                                    if (!allDays.containsKey(key)) allDays[key] = DayRecord(key, emptyList(), entries, offsiteByDay[key] ?: emptyList())
+                                }
+                                offsiteByDay.forEach { (key, entries) ->
+                                    if (!allDays.containsKey(key)) allDays[key] = DayRecord(key, emptyList(), emptyList(), entries)
+                                }
+                                records = allDays.values.sortedByDescending { it.dateKey }
+                            }
+                            .addOnFailureListener {
+                                isLoading = false
+                                val allDays = mutableMapOf<String, DayRecord>()
+                                eventsByDay.forEach { (key, evs) -> allDays[key] = DayRecord(key, evs.sortedBy { it.timestamp }, remoteByDay[key] ?: emptyList()) }
+                                remoteByDay.forEach { (key, entries) -> if (!allDays.containsKey(key)) allDays[key] = DayRecord(key, emptyList(), entries) }
+                                records = allDays.values.sortedByDescending { it.dateKey }
+                            }
                     }
             }
     }
@@ -403,7 +453,11 @@ fun DayRecordCard(
                     Text("⚠", fontSize = 11.sp, color = Color(0xFFF55252))
                 }
                 record.workType?.let { wt ->
-                    val wtColor = if (wt == "Hybrid") Color(0xFF9C67E3) else Color(0xFF2DD4BF)
+                    val wtColor = when (wt) {
+                        "Hybrid"  -> Color(0xFF9C67E3)
+                        "Offsite" -> Color(0xFF6366F1)
+                        else      -> Color(0xFF2DD4BF)
+                    }
                     Text(wt, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = wtColor,
                         modifier = Modifier.background(wtColor.copy(alpha = 0.14f), RoundedCornerShape(4.dp))
                             .padding(horizontal = 5.dp, vertical = 2.dp))
@@ -455,6 +509,22 @@ fun DayRecordCard(
                         Text(if (entry.hours % 1 == 0.0) "${entry.hours.toInt()}h" else "${entry.hours}h", fontSize = 13.sp, color = LocalMcColors.current.textSecondary)
                         Box(modifier = Modifier.size(28.dp).background(Color(0xFF2DD4BF).copy(alpha = 0.1f), RoundedCornerShape(8.dp)).clickable { onEditRemote(entry) }, contentAlignment = Alignment.Center) {
                             Text("✎", fontSize = 13.sp, color = Color(0xFF2DD4BF))
+                        }
+                    }
+                    HorizontalDivider(color = LocalMcColors.current.border)
+                }
+            }
+
+            if (record.offsiteEntries.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                record.offsiteEntries.forEach { entry ->
+                    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Box(modifier = Modifier.size(32.dp).background(Color(0xFF6366F1).copy(alpha = 0.15f), RoundedCornerShape(16.dp)), contentAlignment = Alignment.Center) {
+                            Text("🧳", fontSize = 13.sp)
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Offsite Work", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = LocalMcColors.current.text)
+                            entry.note?.let { if (it.isNotEmpty()) Text(it, fontSize = 11.sp, color = LocalMcColors.current.textSecondary, maxLines = 1) }
                         }
                     }
                     HorizontalDivider(color = LocalMcColors.current.border)

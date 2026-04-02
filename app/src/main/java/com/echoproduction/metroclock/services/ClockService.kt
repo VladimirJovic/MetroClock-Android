@@ -24,7 +24,8 @@ class ClockService {
     val lastClockIn: ClockEvent? get() = _todayEvents.value.lastOrNull { it.type == ClockEventType.CLOCK_IN }
 
     fun fetchTodayEvents(userId: String) {
-        val startOfDay = Calendar.getInstance().apply {
+        val startOfYesterday = Calendar.getInstance().apply {
+            add(Calendar.DAY_OF_YEAR, -1)
             set(Calendar.HOUR_OF_DAY, 0)
             set(Calendar.MINUTE, 0)
             set(Calendar.SECOND, 0)
@@ -33,7 +34,7 @@ class ClockService {
 
         db.collection("clockEvents")
             .whereEqualTo("userId", userId)
-            .whereGreaterThanOrEqualTo("timestamp", Timestamp(startOfDay))
+            .whereGreaterThanOrEqualTo("timestamp", Timestamp(startOfYesterday))
             .get()
             .addOnSuccessListener { snapshot ->
                 val all = snapshot.documents.mapNotNull { doc ->
@@ -139,17 +140,40 @@ class ClockService {
     }
 
     fun calculateOfficeHoursToNow(): Double {
+        val startOfToday = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.time
+
+        val sorted = _todayEvents.value.sortedBy { it.timestamp.toDate() }
+
+        // Find the active (unclosed) clockIn across yesterday+today
+        var activeClockIn: Timestamp? = null
+        for (event in sorted) {
+            if (event.type == ClockEventType.CLOCK_IN) activeClockIn = event.timestamp
+            if (event.type == ClockEventType.CLOCK_OUT) activeClockIn = null
+        }
+
+        // Overnight session: clockIn was before today's midnight, still open
+        if (activeClockIn != null && activeClockIn.toDate().before(startOfToday)) {
+            return (Date().time - activeClockIn.toDate().time) / 3600000.0
+        }
+
+        // Normal same-day: sum all of today's sessions
+        val todayOnly = sorted.filter { !it.timestamp.toDate().before(startOfToday) }
         var total = 0.0
-        var lastIn: Timestamp? = null
-        for (event in _todayEvents.value.sortedBy { it.timestamp.toDate() }) {
-            if (event.type == ClockEventType.CLOCK_IN) lastIn = event.timestamp
-            if (event.type == ClockEventType.CLOCK_OUT && lastIn != null) {
-                total += (event.timestamp.toDate().time - lastIn.toDate().time) / 3600000.0
-                lastIn = null
+        var pairIn: Timestamp? = null
+        for (event in todayOnly) {
+            if (event.type == ClockEventType.CLOCK_IN) pairIn = event.timestamp
+            if (event.type == ClockEventType.CLOCK_OUT && pairIn != null) {
+                total += (event.timestamp.toDate().time - pairIn.toDate().time) / 3600000.0
+                pairIn = null
             }
         }
-        if (lastIn != null) {
-            total += (Date().time - lastIn.toDate().time) / 3600000.0
+        if (pairIn != null) {
+            total += (Date().time - pairIn.toDate().time) / 3600000.0
         }
         return total
     }
@@ -171,14 +195,16 @@ class ClockService {
         db.collection("requests")
             .whereEqualTo("userId", userId)
             .whereEqualTo("type", "remoteWork")
-            .whereEqualTo("status", "approved")
-            .whereGreaterThanOrEqualTo("date", Timestamp(startOfDay))
-            .whereLessThan("date", Timestamp(startOfTomorrow))
             .get()
             .addOnSuccessListener { snapshot ->
                 val total = snapshot.documents.sumOf { doc ->
-                    (doc.data?.get("remoteHours") as? Double)
-                        ?: (doc.data?.get("remoteHours") as? Long)?.toDouble()
+                    val d = doc.data ?: return@sumOf 0.0
+                    if ((d["status"] as? String) != "approved") return@sumOf 0.0
+                    val ts = (d["date"] as? Timestamp) ?: (d["dateFrom"] as? Timestamp)
+                    val date = ts?.toDate() ?: return@sumOf 0.0
+                    if (date.before(startOfDay) || !date.before(startOfTomorrow)) return@sumOf 0.0
+                    (d["remoteHours"] as? Double)
+                        ?: (d["remoteHours"] as? Long)?.toDouble()
                         ?: 0.0
                 }
                 callback(total)

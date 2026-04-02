@@ -2,7 +2,7 @@ package com.echoproduction.metroclock.models
 
 import com.google.firebase.Timestamp
 
-enum class RequestType { REMOTE_WORK, SICK_LEAVE, DAY_OFF, OVERTIME }
+enum class RequestType { REMOTE_WORK, SICK_LEAVE, DAY_OFF, OVERTIME, OFFSITE_WORK }
 
 enum class RequestStatus { PENDING, APPROVED, REJECTED }
 

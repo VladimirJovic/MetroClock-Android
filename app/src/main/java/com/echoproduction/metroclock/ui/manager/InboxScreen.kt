@@ -52,10 +52,11 @@ fun InboxScreen(authService: AuthService) {
                         val typeStr = data["type"] as? String ?: return@mapNotNull null
                         val statusStr = data["status"] as? String ?: return@mapNotNull null
                         val type = when (typeStr) {
-                            "remoteWork" -> RequestType.REMOTE_WORK
-                            "sickLeave"  -> RequestType.SICK_LEAVE
-                            "dayOff"     -> RequestType.DAY_OFF
-                            "overtime"   -> RequestType.OVERTIME
+                            "remoteWork"   -> RequestType.REMOTE_WORK
+                            "sickLeave"    -> RequestType.SICK_LEAVE
+                            "dayOff"       -> RequestType.DAY_OFF
+                            "overtime"     -> RequestType.OVERTIME
+                            "offsiteWork"  -> RequestType.OFFSITE_WORK
                             else -> return@mapNotNull null
                         }
                         val status = when (statusStr) {
@@ -189,10 +190,11 @@ fun InboxScreen(authService: AuthService) {
                     "workspaceId" to u.workspaceId,
                     "managerId" to (u.managerId ?: ""),
                     "type" to when (type) {
-                        RequestType.REMOTE_WORK -> "remoteWork"
-                        RequestType.SICK_LEAVE  -> "sickLeave"
-                        RequestType.DAY_OFF     -> "dayOff"
-                        RequestType.OVERTIME    -> "overtime"
+                        RequestType.REMOTE_WORK  -> "remoteWork"
+                        RequestType.SICK_LEAVE   -> "sickLeave"
+                        RequestType.DAY_OFF      -> "dayOff"
+                        RequestType.OVERTIME     -> "overtime"
+                        RequestType.OFFSITE_WORK -> "offsiteWork"
                     },
                     "status" to "pending",
                     "date" to Timestamp(dateFrom),
@@ -220,6 +222,7 @@ fun ManagerNewRequestSheet(
     onSubmit: (RequestType, Date, Date, String, Int) -> Unit
 ) {
     var selectedType by remember { mutableStateOf(RequestType.REMOTE_WORK) }
+    var typeExpanded by remember { mutableStateOf(false) }
     var note by remember { mutableStateOf("") }
     var remoteHours by remember { mutableIntStateOf(8) }
     var remoteMinutes by remember { mutableIntStateOf(0) }
@@ -288,20 +291,48 @@ fun ManagerNewRequestSheet(
             item { Text("New Request", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = LocalMcColors.current.text) }
 
             item {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(
-                        RequestType.REMOTE_WORK to "Remote",
-                        RequestType.SICK_LEAVE to "Sick Leave",
-                        RequestType.DAY_OFF to "Day Off"
-                    ).forEach { (type, label) ->
-                        val selected = selectedType == type
-                        Button(
-                            onClick = { selectedType = type },
-                            shape = RoundedCornerShape(10.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = if (selected) McOrange else LocalMcColors.current.border),
-                            modifier = Modifier.weight(1f),
-                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 10.dp)
-                        ) { Text(label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1) }
+                val typeLabel = when (selectedType) {
+                    RequestType.REMOTE_WORK  -> "Remote Work"
+                    RequestType.SICK_LEAVE   -> "Sick Leave"
+                    RequestType.DAY_OFF      -> "Day Off"
+                    RequestType.OFFSITE_WORK -> "Offsite Work"
+                    RequestType.OVERTIME     -> "Overtime"
+                }
+                ExposedDropdownMenuBox(expanded = typeExpanded, onExpandedChange = { typeExpanded = it }) {
+                    OutlinedTextField(
+                        value = typeLabel,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Request Type") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeExpanded) },
+                        modifier = Modifier.fillMaxWidth().menuAnchor(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = McOrange,
+                            unfocusedBorderColor = LocalMcColors.current.border,
+                            focusedTextColor = LocalMcColors.current.text,
+                            unfocusedTextColor = LocalMcColors.current.text,
+                            focusedLabelColor = McOrange,
+                            unfocusedLabelColor = LocalMcColors.current.textSecondary,
+                            focusedTrailingIconColor = McOrange,
+                            unfocusedTrailingIconColor = LocalMcColors.current.textSecondary
+                        )
+                    )
+                    ExposedDropdownMenu(
+                        expanded = typeExpanded,
+                        onDismissRequest = { typeExpanded = false },
+                        containerColor = LocalMcColors.current.surface
+                    ) {
+                        listOf(
+                            RequestType.REMOTE_WORK  to "Remote Work",
+                            RequestType.SICK_LEAVE   to "Sick Leave",
+                            RequestType.DAY_OFF      to "Day Off",
+                            RequestType.OFFSITE_WORK to "Offsite Work"
+                        ).forEach { (type, label) ->
+                            DropdownMenuItem(
+                                text = { Text(label, color = LocalMcColors.current.text) },
+                                onClick = { selectedType = type; typeExpanded = false }
+                            )
+                        }
                     }
                 }
             }
@@ -405,23 +436,26 @@ fun InboxRequestCard(request: Request, employeeName: String, onRespond: (() -> U
             val totalMin = (h * 60).toInt()
             "Remote Work · ${totalMin / 60}h ${totalMin % 60}m"
         } ?: "Remote Work"
-        RequestType.SICK_LEAVE -> "Sick Leave"
-        RequestType.DAY_OFF    -> "Day Off"
-        RequestType.OVERTIME   -> request.overtimeHours?.let { h ->
+        RequestType.SICK_LEAVE   -> "Sick Leave"
+        RequestType.DAY_OFF      -> "Day Off"
+        RequestType.OVERTIME     -> request.overtimeHours?.let { h ->
             "Overtime · ${String.format("%.1f", h)}h"
         } ?: "Overtime"
+        RequestType.OFFSITE_WORK -> "Offsite Work"
     }
     val typeColor = when (request.type) {
-        RequestType.REMOTE_WORK -> McOrange
-        RequestType.SICK_LEAVE  -> Color(0xFFF55252)
-        RequestType.DAY_OFF     -> Color(0xFFF5A623)
-        RequestType.OVERTIME    -> Color(0xFFA78BFA)
+        RequestType.REMOTE_WORK  -> McOrange
+        RequestType.SICK_LEAVE   -> Color(0xFFF55252)
+        RequestType.DAY_OFF      -> Color(0xFFF5A623)
+        RequestType.OVERTIME     -> Color(0xFFA78BFA)
+        RequestType.OFFSITE_WORK -> Color(0xFF6366F1)
     }
     val typeInitial = when (request.type) {
-        RequestType.REMOTE_WORK -> "R"
-        RequestType.SICK_LEAVE  -> "S"
-        RequestType.DAY_OFF     -> "D"
-        RequestType.OVERTIME    -> "O"
+        RequestType.REMOTE_WORK  -> "R"
+        RequestType.SICK_LEAVE   -> "S"
+        RequestType.DAY_OFF      -> "D"
+        RequestType.OVERTIME     -> "O"
+        RequestType.OFFSITE_WORK -> "F"
     }
     val statusColor = when (request.status) {
         RequestStatus.APPROVED -> Color(0xFF2DD47E)

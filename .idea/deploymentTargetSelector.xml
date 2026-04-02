@@ -2,12 +2,12 @@
 <project version="4">
   <component name="deploymentTargetSelector">
     <selectionStates>
-      <SelectionState runConfigName="app">
+      <SelectionState runConfigName="MetroClock">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2026-03-10T14:00:54.191169Z">
+        <DropdownSelection timestamp="2026-03-23T02:14:17.810869Z">
           <Target type="DEFAULT_BOOT">
             <handle>
-              <DeviceId pluginId="PhysicalDevice" identifier="serial=2ASVB21A09006140" />
+              <DeviceId pluginId="LocalEmulator" identifier="path=/Users/vladajovic/.android/avd/Medium_Phone.avd" />
             </handle>
           </Target>
         </DropdownSelection>
