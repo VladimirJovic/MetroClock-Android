@@ -22,6 +22,10 @@ import com.echoproduction.metroclock.ui.SplashVideoScreen
 import com.echoproduction.metroclock.ui.auth.LoginScreen
 import com.echoproduction.metroclock.ui.theme.MetroClockTheme
 import kotlinx.coroutines.delay
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 
 class MainActivity : ComponentActivity() {
