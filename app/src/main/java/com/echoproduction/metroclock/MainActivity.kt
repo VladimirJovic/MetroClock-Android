@@ -18,14 +18,9 @@ import com.echoproduction.metroclock.services.TaskService
 import com.echoproduction.metroclock.services.WiFiService
 import com.echoproduction.metroclock.services.WorkspaceService
 import com.echoproduction.metroclock.ui.MainNavigation
-import com.echoproduction.metroclock.ui.SplashVideoScreen
 import com.echoproduction.metroclock.ui.auth.LoginScreen
 import com.echoproduction.metroclock.ui.theme.MetroClockTheme
 import kotlinx.coroutines.delay
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 
 class MainActivity : ComponentActivity() {
@@ -61,13 +56,6 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             MetroClockTheme {
-                var splashDone by remember { mutableStateOf(false) }
-
-                if (!splashDone) {
-                    SplashVideoScreen(onFinished = { splashDone = true })
-                    return@MetroClockTheme
-                }
-
                 val user by authService.currentUser.collectAsState()
                 val currentSSID by wifiService.currentSSID.collectAsState()
                 val location by locationService.location.collectAsState()
