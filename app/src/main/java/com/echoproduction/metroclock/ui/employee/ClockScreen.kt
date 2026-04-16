@@ -357,7 +357,7 @@ fun ClockScreen(
             } else {
                 Text(
                     text = "OUTSIDE OFFICE — LOCATION REQUIRED",
-                    fontSize = 10.sp,
+                    fontSize = 11.sp,
                     color = McOrange.copy(alpha = 0.6f),
                     letterSpacing = 1.2.sp,
                     textAlign = TextAlign.Center
@@ -433,6 +433,7 @@ fun ClockScreen(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .heightIn(min = 48.dp)
                                     .clickable {
                                         selectedTasks = if (isSelected) selectedTasks - task else selectedTasks + task
                                     }

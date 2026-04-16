@@ -137,7 +137,7 @@ fun MainNavigation(
                                     maxLines = 1,
                                     softWrap = false,
                                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                                    fontSize = 10.sp
+                                    fontSize = 11.sp
                                 )
                             },
                             colors = NavigationBarItemDefaults.colors(

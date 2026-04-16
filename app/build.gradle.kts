@@ -67,4 +67,6 @@ dependencies {
 
 // Location
     implementation("com.google.android.gms:play-services-location:21.3.0")
+    // Google Sign-In
+    implementation("com.google.android.gms:play-services-auth:21.2.0")
 }

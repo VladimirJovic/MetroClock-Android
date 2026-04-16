@@ -12,7 +12,20 @@
           "package_name": "com.echoproduction.metroclock"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "379668362923-ssn0niiusvvsqimc3h8b8o0fc8h3aojq.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.echoproduction.metroclock",
+            "certificate_hash": "0d7ea44f32fbd3de41e746b85025c8b3976985c3"
+          }
+        },
+        {
+          "client_id": "379668362923-4j5jq7ah78pf7eg9go372s3b69nm38cs.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCo5NKlEQydHKkQnXCOVeDkfnlltiXYR6E"
@@ -20,7 +33,20 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "379668362923-4j5jq7ah78pf7eg9go372s3b69nm38cs.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "379668362923-4289no9j7u30p2me30kn0h443a8apqsn.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.echoworkplace",
+                "app_store_id": "03032000"
+              }
+            }
+          ]
         }
       }
     }

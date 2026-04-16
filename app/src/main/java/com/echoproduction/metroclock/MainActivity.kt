@@ -20,6 +20,9 @@ import com.echoproduction.metroclock.services.WorkspaceService
 import com.echoproduction.metroclock.ui.MainNavigation
 import com.echoproduction.metroclock.ui.auth.LoginScreen
 import com.echoproduction.metroclock.ui.theme.MetroClockTheme
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
 import kotlinx.coroutines.delay
 import androidx.compose.runtime.rememberCoroutineScope
 
@@ -34,6 +37,17 @@ class MainActivity : ComponentActivity() {
 
     private val notificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* result ignored */ }
+
+    private val googleSignInLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+            try {
+                val account = task.getResult(ApiException::class.java)
+                authService.handleGoogleSignInResult(account)
+            } catch (e: ApiException) {
+                // User cancelled or error — do nothing
+            }
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -90,7 +104,10 @@ class MainActivity : ComponentActivity() {
                 }
 
                 if (user == null) {
-                    LoginScreen(authService = authService)
+                    LoginScreen(
+                        authService = authService,
+                        onGoogleSignIn = { launchGoogleSignIn() }
+                    )
                 } else {
                     MainNavigation(
                         authService = authService,
@@ -101,6 +118,17 @@ class MainActivity : ComponentActivity() {
                     )
                 }
             }
+        }
+    }
+
+    private fun launchGoogleSignIn() {
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(getString(R.string.default_web_client_id))
+            .requestEmail()
+            .build()
+        val client = GoogleSignIn.getClient(this, gso)
+        client.signOut().addOnCompleteListener {
+            googleSignInLauncher.launch(client.signInIntent)
         }
     }
 }

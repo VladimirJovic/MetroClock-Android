@@ -1,3 +1,6 @@
 <resources>
     <string name="app_name">MetroClock</string>
+    <!-- Web client ID for Google Sign-In. Found in Firebase Console →
+         Authentication → Sign-in method → Google → Web SDK configuration → Web client ID -->
+    <string name="default_web_client_id">379668362923-4j5jq7ah78pf7eg9go372s3b69nm38cs.apps.googleusercontent.com</string>
 </resources>

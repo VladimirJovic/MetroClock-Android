@@ -1,6 +1,7 @@
 package com.echoproduction.metroclock.ui.manager
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,6 +23,8 @@ import com.echoproduction.metroclock.services.AuthService
 import com.echoproduction.metroclock.ui.employee.dateRangeLabel
 import com.echoproduction.metroclock.ui.theme.LocalMcColors
 import com.echoproduction.metroclock.ui.theme.McOrange
+import com.echoproduction.metroclock.ui.theme.McGreen
+import com.echoproduction.metroclock.ui.theme.McRed
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
@@ -111,12 +114,16 @@ fun InboxScreen(authService: AuthService) {
             ) {
                 Text("Inbox", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = LocalMcColors.current.text)
                 if (hasManager) {
-                    Button(
-                        onClick = { showNewRequestSheet = true },
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = McOrange),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-                    ) { Text("+ New", fontSize = 13.sp, fontWeight = FontWeight.SemiBold) }
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .background(McOrange.copy(alpha = 0.12f), RoundedCornerShape(10.dp))
+                            .border(1.dp, McOrange.copy(alpha = 0.3f), RoundedCornerShape(10.dp))
+                            .clickable { showNewRequestSheet = true },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("+", fontSize = 20.sp, color = McOrange, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
 
@@ -132,17 +139,41 @@ fun InboxScreen(authService: AuthService) {
                 ) {
                     if (requests.isEmpty()) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text("No requests", color = LocalMcColors.current.textSecondary)
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("📥", fontSize = 48.sp)
+                                Text("Inbox is empty", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = LocalMcColors.current.textSecondary)
+                                Text("Team requests will appear here", fontSize = 13.sp, color = LocalMcColors.current.textTertiary)
+                            }
                         }
                     } else {
                         LazyColumn(
-                            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp),
+                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
                             verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             if (pending.isNotEmpty()) {
                                 item {
-                                    Text("Pending (${pending.size})", fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
-                                        color = Color(0xFFF5A623), modifier = Modifier.padding(vertical = 4.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp, start = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Text(
+                                            "PENDING",
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            letterSpacing = 2.sp,
+                                            color = LocalMcColors.current.textTertiary
+                                        )
+                                        Text(
+                                            "${pending.size}",
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = McOrange,
+                                            modifier = Modifier
+                                                .background(McOrange.copy(alpha = 0.12f), RoundedCornerShape(5.dp))
+                                                .padding(horizontal = 7.dp, vertical = 3.dp)
+                                        )
+                                    }
                                 }
                                 items(pending) { request ->
                                     InboxRequestCard(request, employeeNames[request.userId] ?: "") { selectedRequest = request }
@@ -150,8 +181,14 @@ fun InboxScreen(authService: AuthService) {
                             }
                             if (resolved.isNotEmpty()) {
                                 item {
-                                    Text("Resolved", fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
-                                        color = LocalMcColors.current.textSecondary, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
+                                    Text(
+                                        "RESOLVED",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 2.sp,
+                                        color = LocalMcColors.current.textTertiary,
+                                        modifier = Modifier.padding(top = if (pending.isNotEmpty()) 12.dp else 8.dp, bottom = 8.dp, start = 4.dp)
+                                    )
                                 }
                                 items(resolved) { request ->
                                     InboxRequestCard(request, employeeNames[request.userId] ?: "", null)
@@ -254,8 +291,7 @@ fun ManagerNewRequestSheet(
                 containerColor = LocalMcColors.current.surface, titleContentColor = LocalMcColors.current.text,
                 headlineContentColor = LocalMcColors.current.text, weekdayContentColor = LocalMcColors.current.textSecondary,
                 subheadContentColor = LocalMcColors.current.textSecondary, dayContentColor = LocalMcColors.current.text,
-                selectedDayContainerColor = McOrange, todayDateBorderColor = McOrange,
-                todayContentColor = McOrange
+                selectedDayContainerColor = McOrange, todayDateBorderColor = McOrange, todayContentColor = McOrange
             ))
         }
     }
@@ -276,8 +312,7 @@ fun ManagerNewRequestSheet(
                 containerColor = LocalMcColors.current.surface, titleContentColor = LocalMcColors.current.text,
                 headlineContentColor = LocalMcColors.current.text, weekdayContentColor = LocalMcColors.current.textSecondary,
                 subheadContentColor = LocalMcColors.current.textSecondary, dayContentColor = LocalMcColors.current.text,
-                selectedDayContainerColor = McOrange, todayDateBorderColor = McOrange,
-                todayContentColor = McOrange
+                selectedDayContainerColor = McOrange, todayDateBorderColor = McOrange, todayContentColor = McOrange
             ))
         }
     }
@@ -285,12 +320,15 @@ fun ManagerNewRequestSheet(
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = LocalMcColors.current.surface) {
         LazyColumn(
             modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             item { Text("New Request", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = LocalMcColors.current.text) }
 
+            // Type
             item {
+                InboxSheetLabel("REQUEST TYPE")
+                Spacer(modifier = Modifier.height(8.dp))
                 val typeLabel = when (selectedType) {
                     RequestType.REMOTE_WORK  -> "Remote Work"
                     RequestType.SICK_LEAVE   -> "Sick Leave"
@@ -300,111 +338,95 @@ fun ManagerNewRequestSheet(
                 }
                 ExposedDropdownMenuBox(expanded = typeExpanded, onExpandedChange = { typeExpanded = it }) {
                     OutlinedTextField(
-                        value = typeLabel,
-                        onValueChange = {},
-                        readOnly = true,
+                        value = typeLabel, onValueChange = {}, readOnly = true,
                         label = { Text("Request Type") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeExpanded) },
                         modifier = Modifier.fillMaxWidth().menuAnchor(),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = McOrange,
-                            unfocusedBorderColor = LocalMcColors.current.border,
-                            focusedTextColor = LocalMcColors.current.text,
-                            unfocusedTextColor = LocalMcColors.current.text,
-                            focusedLabelColor = McOrange,
-                            unfocusedLabelColor = LocalMcColors.current.textSecondary,
-                            focusedTrailingIconColor = McOrange,
-                            unfocusedTrailingIconColor = LocalMcColors.current.textSecondary
+                            focusedBorderColor = McOrange, unfocusedBorderColor = LocalMcColors.current.border,
+                            focusedTextColor = LocalMcColors.current.text, unfocusedTextColor = LocalMcColors.current.text,
+                            focusedLabelColor = McOrange, unfocusedLabelColor = LocalMcColors.current.textSecondary,
+                            focusedTrailingIconColor = McOrange, unfocusedTrailingIconColor = LocalMcColors.current.textSecondary
                         )
                     )
-                    ExposedDropdownMenu(
-                        expanded = typeExpanded,
-                        onDismissRequest = { typeExpanded = false },
-                        containerColor = LocalMcColors.current.surface
-                    ) {
-                        listOf(
-                            RequestType.REMOTE_WORK  to "Remote Work",
-                            RequestType.SICK_LEAVE   to "Sick Leave",
-                            RequestType.DAY_OFF      to "Day Off",
-                            RequestType.OFFSITE_WORK to "Offsite Work"
-                        ).forEach { (type, label) ->
-                            DropdownMenuItem(
-                                text = { Text(label, color = LocalMcColors.current.text) },
-                                onClick = { selectedType = type; typeExpanded = false }
-                            )
+                    ExposedDropdownMenu(expanded = typeExpanded, onDismissRequest = { typeExpanded = false }, containerColor = LocalMcColors.current.surface) {
+                        listOf(RequestType.REMOTE_WORK to "Remote Work", RequestType.SICK_LEAVE to "Sick Leave", RequestType.DAY_OFF to "Day Off", RequestType.OFFSITE_WORK to "Offsite Work").forEach { (type, label) ->
+                            DropdownMenuItem(text = { Text(label, color = LocalMcColors.current.text) }, onClick = { selectedType = type; typeExpanded = false })
                         }
                     }
                 }
             }
 
+            // Dates
             item {
+                InboxSheetLabel("DATES")
+                Spacer(modifier = Modifier.height(8.dp))
                 val fromLabel = if (selectedType == RequestType.REMOTE_WORK) "Date" else "From"
-                Row(
+                Column(
                     modifier = Modifier.fillMaxWidth()
                         .background(LocalMcColors.current.background, RoundedCornerShape(10.dp))
-                        .clickable { showDateFromPicker = true }
-                        .padding(14.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                        .border(1.dp, LocalMcColors.current.border, RoundedCornerShape(10.dp))
                 ) {
-                    Text(fromLabel, fontSize = 14.sp, color = LocalMcColors.current.textSecondary)
-                    Text(dateDisplayFmt.format(selectedDateFrom), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = LocalMcColors.current.text)
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clickable { showDateFromPicker = true }.padding(horizontal = 14.dp, vertical = 14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(fromLabel, fontSize = 14.sp, color = LocalMcColors.current.textSecondary)
+                        Text(dateDisplayFmt.format(selectedDateFrom), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = LocalMcColors.current.text)
+                    }
+                    if (selectedType != RequestType.REMOTE_WORK) {
+                        HorizontalDivider(color = LocalMcColors.current.border)
+                        Row(
+                            modifier = Modifier.fillMaxWidth().clickable { showDateToPicker = true }.padding(horizontal = 14.dp, vertical = 14.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("To", fontSize = 14.sp, color = LocalMcColors.current.textSecondary)
+                            Text(dateDisplayFmt.format(selectedDateTo), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = LocalMcColors.current.text)
+                        }
+                    }
                 }
             }
 
-            if (selectedType != RequestType.REMOTE_WORK) {
+            // Remote hours
+            if (selectedType == RequestType.REMOTE_WORK) {
                 item {
+                    InboxSheetLabel("HOURS")
+                    Spacer(modifier = Modifier.height(8.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth()
                             .background(LocalMcColors.current.background, RoundedCornerShape(10.dp))
-                            .clickable { showDateToPicker = true }
-                            .padding(14.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                            .border(1.dp, LocalMcColors.current.border, RoundedCornerShape(10.dp))
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Text("To", fontSize = 14.sp, color = LocalMcColors.current.textSecondary)
-                        Text(dateDisplayFmt.format(selectedDateTo), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = LocalMcColors.current.text)
-                    }
-                }
-            }
-
-            if (selectedType == RequestType.REMOTE_WORK) {
-                item {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Duration", fontSize = 14.sp, color = LocalMcColors.current.textSecondary)
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("Hours", fontSize = 11.sp, color = LocalMcColors.current.textSecondary)
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    IconButton(onClick = { if (remoteHours > 0) remoteHours-- }) { Text("−", fontSize = 20.sp, color = McOrange) }
-                                    Text("${remoteHours}h", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = LocalMcColors.current.text)
-                                    IconButton(onClick = { if (remoteHours < 23) remoteHours++ }) { Text("+", fontSize = 20.sp, color = McOrange) }
-                                }
+                        Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("Hours", fontSize = 11.sp, color = LocalMcColors.current.textSecondary)
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Box(modifier = Modifier.size(32.dp).background(McOrange.copy(alpha = 0.12f), RoundedCornerShape(8.dp)).clickable { if (remoteHours > 0) remoteHours-- }, contentAlignment = Alignment.Center) { Text("−", fontSize = 18.sp, color = McOrange, fontWeight = FontWeight.Bold) }
+                                Text("${remoteHours}h", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = LocalMcColors.current.text)
+                                Box(modifier = Modifier.size(32.dp).background(McOrange.copy(alpha = 0.12f), RoundedCornerShape(8.dp)).clickable { if (remoteHours < 23) remoteHours++ }, contentAlignment = Alignment.Center) { Text("+", fontSize = 18.sp, color = McOrange, fontWeight = FontWeight.Bold) }
                             }
-                            Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("Minutes", fontSize = 11.sp, color = LocalMcColors.current.textSecondary)
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    IconButton(onClick = {
-                                        if (remoteMinutes >= 30) remoteMinutes -= 30
-                                        else if (remoteHours > 0) { remoteHours--; remoteMinutes = 30 }
-                                    }) { Text("−", fontSize = 20.sp, color = McOrange) }
-                                    Text("%02dm".format(remoteMinutes), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = LocalMcColors.current.text)
-                                    IconButton(onClick = {
-                                        if (remoteMinutes < 30) remoteMinutes = 30
-                                        else { remoteMinutes = 0; if (remoteHours < 23) remoteHours++ }
-                                    }) { Text("+", fontSize = 20.sp, color = McOrange) }
-                                }
+                        }
+                        Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("Minutes", fontSize = 11.sp, color = LocalMcColors.current.textSecondary)
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Box(modifier = Modifier.size(32.dp).background(McOrange.copy(alpha = 0.12f), RoundedCornerShape(8.dp)).clickable { if (remoteMinutes >= 30) remoteMinutes -= 30 else if (remoteHours > 0) { remoteHours--; remoteMinutes = 30 } }, contentAlignment = Alignment.Center) { Text("−", fontSize = 18.sp, color = McOrange, fontWeight = FontWeight.Bold) }
+                                Text("%02dm".format(remoteMinutes), fontSize = 20.sp, fontWeight = FontWeight.Bold, color = LocalMcColors.current.text)
+                                Box(modifier = Modifier.size(32.dp).background(McOrange.copy(alpha = 0.12f), RoundedCornerShape(8.dp)).clickable { if (remoteMinutes < 30) remoteMinutes = 30 else { remoteMinutes = 0; if (remoteHours < 23) remoteHours++ } }, contentAlignment = Alignment.Center) { Text("+", fontSize = 18.sp, color = McOrange, fontWeight = FontWeight.Bold) }
                             }
                         }
                     }
                 }
             }
 
+            // Note
             item {
+                InboxSheetLabel("NOTE")
+                Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = note, onValueChange = { note = it },
-                    label = { Text("Note", color = LocalMcColors.current.textSecondary) },
-                    modifier = Modifier.fillMaxWidth(), minLines = 2,
+                    placeholder = { Text("Optional note…", color = LocalMcColors.current.textTertiary) },
+                    modifier = Modifier.fillMaxWidth(), minLines = 3,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = McOrange, unfocusedBorderColor = LocalMcColors.current.border,
                         focusedTextColor = LocalMcColors.current.text, unfocusedTextColor = LocalMcColors.current.text
@@ -414,17 +436,19 @@ fun ManagerNewRequestSheet(
 
             item {
                 Button(
-                    onClick = {
-                        val totalMinutes = remoteHours * 60 + remoteMinutes
-                        onSubmit(selectedType, selectedDateFrom, selectedDateTo, note, totalMinutes)
-                    },
+                    onClick = { val totalMinutes = remoteHours * 60 + remoteMinutes; onSubmit(selectedType, selectedDateFrom, selectedDateTo, note, totalMinutes) },
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = McOrange)
-                ) { Text("Submit Request", fontWeight = FontWeight.SemiBold) }
+                ) { Text("Submit Request", fontWeight = FontWeight.Bold, fontSize = 15.sp) }
             }
         }
     }
+}
+
+@Composable
+private fun InboxSheetLabel(text: String) {
+    Text(text, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, color = LocalMcColors.current.textTertiary)
 }
 
 // MARK: - InboxRequestCard
@@ -438,14 +462,12 @@ fun InboxRequestCard(request: Request, employeeName: String, onRespond: (() -> U
         } ?: "Remote Work"
         RequestType.SICK_LEAVE   -> "Sick Leave"
         RequestType.DAY_OFF      -> "Day Off"
-        RequestType.OVERTIME     -> request.overtimeHours?.let { h ->
-            "Overtime · ${String.format("%.1f", h)}h"
-        } ?: "Overtime"
+        RequestType.OVERTIME     -> request.overtimeHours?.let { h -> "Overtime · ${"%.1f".format(h)}h" } ?: "Overtime"
         RequestType.OFFSITE_WORK -> "Offsite Work"
     }
     val typeColor = when (request.type) {
         RequestType.REMOTE_WORK  -> McOrange
-        RequestType.SICK_LEAVE   -> Color(0xFFF55252)
+        RequestType.SICK_LEAVE   -> McRed
         RequestType.DAY_OFF      -> Color(0xFFF5A623)
         RequestType.OVERTIME     -> Color(0xFFA78BFA)
         RequestType.OFFSITE_WORK -> Color(0xFF6366F1)
@@ -458,54 +480,118 @@ fun InboxRequestCard(request: Request, employeeName: String, onRespond: (() -> U
         RequestType.OFFSITE_WORK -> "F"
     }
     val statusColor = when (request.status) {
-        RequestStatus.APPROVED -> Color(0xFF2DD47E)
-        RequestStatus.REJECTED -> Color(0xFFF55252)
-        RequestStatus.PENDING  -> Color(0xFFF5A623)
+        RequestStatus.APPROVED -> McGreen
+        RequestStatus.REJECTED -> McRed
+        RequestStatus.PENDING  -> McOrange
     }
     val statusLabel = when (request.status) {
-        RequestStatus.APPROVED -> "Approved"
-        RequestStatus.REJECTED -> "Rejected"
-        RequestStatus.PENDING  -> "Pending"
+        RequestStatus.APPROVED -> "APPROVED"
+        RequestStatus.REJECTED -> "REJECTED"
+        RequestStatus.PENDING  -> "PENDING"
     }
 
-    Column(
-        modifier = Modifier.fillMaxWidth().background(LocalMcColors.current.surface, RoundedCornerShape(14.dp)).padding(16.dp)
-    ) {
-        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Box(
-                modifier = Modifier.size(36.dp).background(typeColor.copy(alpha = 0.12f), RoundedCornerShape(10.dp)),
-                contentAlignment = Alignment.Center
-            ) { Text(typeInitial, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = typeColor) }
+    val cardBorderColor = if (request.status == RequestStatus.PENDING)
+        McOrange.copy(alpha = 0.3f) else LocalMcColors.current.border
 
-            Column(modifier = Modifier.weight(1f)) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(LocalMcColors.current.surface, RoundedCornerShape(12.dp))
+            .border(1.dp, cardBorderColor, RoundedCornerShape(12.dp))
+    ) {
+        // Main info row
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier.size(42.dp).background(typeColor.copy(alpha = 0.15f), RoundedCornerShape(21.dp)),
+                contentAlignment = Alignment.Center
+            ) { Text(typeInitial, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = typeColor) }
+
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(typeLabel, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = LocalMcColors.current.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (employeeName.isNotEmpty()) {
-                    Text(employeeName, fontSize = 12.sp, color = LocalMcColors.current.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(employeeName, fontSize = 12.sp, color = LocalMcColors.current.textSecondary, maxLines = 1)
                 }
                 Text(request.dateRangeLabel(), fontSize = 12.sp, color = LocalMcColors.current.textSecondary)
             }
 
+            // Status badge — ALL CAPS
             Text(
-                text = statusLabel, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = statusColor, maxLines = 1,
-                modifier = Modifier.background(statusColor.copy(alpha = 0.12f), RoundedCornerShape(8.dp)).padding(horizontal = 8.dp, vertical = 4.dp)
+                text = statusLabel,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.sp,
+                color = statusColor,
+                maxLines = 1,
+                modifier = Modifier
+                    .background(statusColor.copy(alpha = 0.12f), RoundedCornerShape(6.dp))
+                    .padding(horizontal = 8.dp, vertical = 5.dp)
             )
         }
 
-        request.employeeNote?.let {
-            if (it.isNotEmpty()) { Spacer(modifier = Modifier.height(8.dp)); Text(it, fontSize = 12.sp, color = LocalMcColors.current.textSecondary) }
-        }
-        request.managerNote?.let {
-            if (it.isNotEmpty()) { Spacer(modifier = Modifier.height(4.dp)); Text("Manager: $it", fontSize = 12.sp, color = LocalMcColors.current.textSecondary) }
+        // Employee note
+        request.employeeNote?.let { note ->
+            if (note.isNotEmpty()) {
+                HorizontalDivider(color = LocalMcColors.current.border, modifier = Modifier.padding(horizontal = 16.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top
+                ) {
+                    Text("💬", fontSize = 11.sp)
+                    Text(note, fontSize = 12.sp, color = LocalMcColors.current.textSecondary)
+                }
+            }
         }
 
+        // Manager note (resolved)
+        request.managerNote?.let { note ->
+            if (note.isNotEmpty()) {
+                HorizontalDivider(color = LocalMcColors.current.border, modifier = Modifier.padding(horizontal = 16.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top
+                ) {
+                    Text("↩", fontSize = 11.sp, color = LocalMcColors.current.textTertiary)
+                    Text(note, fontSize = 12.sp, color = LocalMcColors.current.textSecondary)
+                }
+            }
+        }
+
+        // Respond action buttons (pending only)
         if (onRespond != null) {
-            Spacer(modifier = Modifier.height(10.dp))
-            Button(
-                onClick = onRespond,
-                modifier = Modifier.fillMaxWidth().height(40.dp),
-                shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = McOrange.copy(alpha = 0.12f))
-            ) { Text("Respond", fontSize = 13.sp, color = McOrange, fontWeight = FontWeight.SemiBold) }
+            HorizontalDivider(color = LocalMcColors.current.border, modifier = Modifier.padding(horizontal = 16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                // Approve
+                Button(
+                    onClick = onRespond,
+                    modifier = Modifier.weight(1f).height(40.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = McGreen.copy(alpha = 0.12f))
+                ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("✓", fontSize = 13.sp, color = McGreen, fontWeight = FontWeight.Bold)
+                        Text("Approve", fontSize = 13.sp, color = McGreen, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+                // Reject
+                Button(
+                    onClick = onRespond,
+                    modifier = Modifier.weight(1f).height(40.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = McRed.copy(alpha = 0.10f))
+                ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("✕", fontSize = 13.sp, color = McRed, fontWeight = FontWeight.Bold)
+                        Text("Reject", fontSize = 13.sp, color = McRed, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
         }
     }
 }
@@ -519,37 +605,80 @@ fun ResolveSheet(request: Request, onDismiss: () -> Unit, onResolve: (RequestSta
     var selectedStatus by remember { mutableStateOf(RequestStatus.APPROVED) }
 
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = LocalMcColors.current.surface) {
-        Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
             Text("Respond to Request", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = LocalMcColors.current.text)
 
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                listOf(RequestStatus.APPROVED, RequestStatus.REJECTED).forEach { status ->
-                    val selected = selectedStatus == status
-                    val color = if (status == RequestStatus.APPROVED) Color(0xFF2DD47E) else Color(0xFFF55252)
-                    Button(
-                        onClick = { selectedStatus = status },
-                        modifier = Modifier.weight(1f).height(44.dp),
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = if (selected) color else LocalMcColors.current.border)
+            // Decision buttons
+            Column {
+                InboxSheetLabel("DECISION")
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    // Approve button
+                    val approveSelected = selectedStatus == RequestStatus.APPROVED
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(46.dp)
+                            .background(
+                                if (approveSelected) McGreen else McGreen.copy(alpha = 0.08f),
+                                RoundedCornerShape(10.dp)
+                            )
+                            .border(
+                                1.dp,
+                                if (approveSelected) McGreen else McGreen.copy(alpha = 0.3f),
+                                RoundedCornerShape(10.dp)
+                            )
+                            .clickable { selectedStatus = RequestStatus.APPROVED },
+                        contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = if (status == RequestStatus.APPROVED) "Approve" else "Reject",
-                            color = if (selected) Color.White else LocalMcColors.current.textSecondary,
-                            fontWeight = FontWeight.SemiBold
-                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text("✓", color = if (approveSelected) Color.White else McGreen, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text("Approve", color = if (approveSelected) Color.White else McGreen, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                        }
+                    }
+                    // Reject button
+                    val rejectSelected = selectedStatus == RequestStatus.REJECTED
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(46.dp)
+                            .background(
+                                if (rejectSelected) McRed else McRed.copy(alpha = 0.08f),
+                                RoundedCornerShape(10.dp)
+                            )
+                            .border(
+                                1.dp,
+                                if (rejectSelected) McRed else McRed.copy(alpha = 0.3f),
+                                RoundedCornerShape(10.dp)
+                            )
+                            .clickable { selectedStatus = RequestStatus.REJECTED },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text("✕", color = if (rejectSelected) Color.White else McRed, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text("Reject", color = if (rejectSelected) Color.White else McRed, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                        }
                     }
                 }
             }
 
-            OutlinedTextField(
-                value = note, onValueChange = { note = it },
-                label = { Text("Note", color = LocalMcColors.current.textSecondary) },
-                modifier = Modifier.fillMaxWidth(), minLines = 2,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = McOrange, unfocusedBorderColor = LocalMcColors.current.border,
-                    focusedTextColor = Color.White, unfocusedTextColor = Color.White
+            // Note field
+            Column {
+                InboxSheetLabel("NOTE (REQUIRED)")
+                Spacer(modifier = Modifier.height(10.dp))
+                OutlinedTextField(
+                    value = note, onValueChange = { note = it },
+                    placeholder = { Text("Add a note for the employee…", color = LocalMcColors.current.textTertiary) },
+                    modifier = Modifier.fillMaxWidth(), minLines = 3,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = McOrange, unfocusedBorderColor = LocalMcColors.current.border,
+                        focusedTextColor = LocalMcColors.current.text, unfocusedTextColor = LocalMcColors.current.text
+                    )
                 )
-            )
+            }
 
             Button(
                 onClick = { onResolve(selectedStatus, note) },
@@ -557,7 +686,7 @@ fun ResolveSheet(request: Request, onDismiss: () -> Unit, onResolve: (RequestSta
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = McOrange)
-            ) { Text("Send", fontWeight = FontWeight.SemiBold) }
+            ) { Text("Send Response", fontWeight = FontWeight.Bold, fontSize = 15.sp) }
 
             Spacer(modifier = Modifier.height(16.dp))
         }

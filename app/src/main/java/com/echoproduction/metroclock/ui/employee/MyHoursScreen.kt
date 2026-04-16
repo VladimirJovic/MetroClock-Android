@@ -1,6 +1,8 @@
 package com.echoproduction.metroclock.ui.employee
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -17,6 +19,8 @@ import com.echoproduction.metroclock.models.ClockEventType
 import com.echoproduction.metroclock.services.AuthService
 import com.echoproduction.metroclock.ui.theme.LocalMcColors
 import com.echoproduction.metroclock.ui.theme.McOrange
+import com.echoproduction.metroclock.ui.theme.McGreen
+import com.echoproduction.metroclock.ui.theme.McRed
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import com.google.firebase.Timestamp
@@ -177,8 +181,13 @@ fun MyHoursScreen(authService: AuthService) {
 
     Box(modifier = Modifier.fillMaxSize().background(LocalMcColors.current.background)) {
         Column(modifier = Modifier.fillMaxSize()) {
-            Text("My Hours", fontSize = 28.sp, fontWeight = FontWeight.Bold,
-                color = LocalMcColors.current.text, modifier = Modifier.padding(24.dp))
+            Text(
+                "My Hours",
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                color = LocalMcColors.current.text,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 20.dp)
+            )
 
             if (isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -192,18 +201,21 @@ fun MyHoursScreen(authService: AuthService) {
                 ) {
                     if (dayMap.isEmpty()) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text("No hours recorded yet", color = LocalMcColors.current.textSecondary)
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("📅", fontSize = 48.sp)
+                                Text("No hours recorded yet", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = LocalMcColors.current.textSecondary)
+                                Text("Your clock-in history will appear here", fontSize = 13.sp, color = LocalMcColors.current.textTertiary)
+                            }
                         }
                     } else {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             dayMap.forEach { (dayKey, data) ->
                                 val parsedDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(dayKey)
 
-                                // Office hours
                                 var officeMs = 0L
                                 data.clockIns.forEachIndexed { i, ci ->
                                     val co = data.clockOuts.getOrNull(i)
@@ -214,6 +226,12 @@ fun MyHoursScreen(authService: AuthService) {
                                 val totalH = officeH + remoteH
                                 val totalMin = (totalH * 60).toInt()
                                 val hoursDisplay = "${totalMin / 60}h ${totalMin % 60}m"
+
+                                val statusColor = when {
+                                    totalH >= 8 -> McGreen
+                                    totalH >= 4 -> McOrange
+                                    else        -> McRed
+                                }
 
                                 val hasOffice = data.clockIns.isNotEmpty()
                                 val hasRemote = data.remoteEntries.isNotEmpty()
@@ -226,116 +244,204 @@ fun MyHoursScreen(authService: AuthService) {
                                 }
 
                                 item(key = dayKey) {
-                                    Column(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .background(LocalMcColors.current.surface, RoundedCornerShape(14.dp))
-                                            .padding(16.dp)
-                                    ) {
-                                        Row(modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                            verticalAlignment = Alignment.CenterVertically) {
-                                            Row(verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                                Text(
-                                                    text = parsedDate?.let { dateFormat.format(it) } ?: dayKey,
-                                                    fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
-                                                    color = LocalMcColors.current.text
-                                                )
-                                                if (workType != null) {
-                                                    val wtColor = when (workType) {
-                                                        "Hybrid"  -> Color(0xFF9B6DFF)
-                                                        "Offsite" -> Color(0xFF6366F1)
-                                                        else      -> Color(0xFF008080)
-                                                    }
-                                                    Text(workType, fontSize = 10.sp, fontWeight = FontWeight.Bold,
-                                                        color = wtColor,
-                                                        modifier = Modifier
-                                                            .background(wtColor.copy(alpha = 0.14f), RoundedCornerShape(4.dp))
-                                                            .padding(horizontal = 6.dp, vertical = 2.dp))
-                                                }
-                                            }
-                                            Text(hoursDisplay, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = McOrange)
-                                        }
-
-                                        Spacer(modifier = Modifier.height(8.dp))
-
-                                        // Clock events
-                                        data.clockIns.forEachIndexed { i, ci ->
-                                            val co = data.clockOuts.getOrNull(i)
-                                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                                verticalAlignment = Alignment.CenterVertically) {
-                                                Text("▶", fontSize = 10.sp, color = Color(0xFF2DD47E))
-                                                Text(timeFormat.format(ci.timestamp.toDate()),
-                                                    fontSize = 12.sp, color = LocalMcColors.current.textSecondary)
-                                                if (co != null) {
-                                                    Text("→", fontSize = 10.sp, color = LocalMcColors.current.textSecondary)
-                                                    Text("⏹", fontSize = 10.sp, color = Color(0xFFF55252))
-                                                    Text(timeFormat.format(co.timestamp.toDate()),
-                                                        fontSize = 12.sp, color = LocalMcColors.current.textSecondary)
-                                                } else {
-                                                    Text("→ still clocked in", fontSize = 12.sp, color = Color(0xFF2DD47E))
-                                                }
-                                            }
-                                        }
-
-                                        // Remote entries
-                                        if (data.remoteEntries.isNotEmpty()) {
-                                            if (data.clockIns.isNotEmpty()) {
-                                                Spacer(modifier = Modifier.height(6.dp))
-                                                HorizontalDivider(color = LocalMcColors.current.border.copy(alpha = 0.5f))
-                                                Spacer(modifier = Modifier.height(6.dp))
-                                            }
-                                            data.remoteEntries.forEach { entry ->
-                                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                                    verticalAlignment = Alignment.CenterVertically) {
-                                                    Text("🏠", fontSize = 12.sp)
-                                                    Text("Remote Work", fontSize = 12.sp,
-                                                        color = LocalMcColors.current.textSecondary)
-                                                    Text("·", fontSize = 12.sp,
-                                                        color = LocalMcColors.current.textSecondary)
-                                                    val h = entry.hours
-                                                    val hStr = if (h % 1.0 == 0.0) "${h.toInt()}h" else "%.1fh".format(h)
-                                                    Text(hStr, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
-                                                        color = Color(0xFF008080))
-                                                    if (!entry.note.isNullOrBlank()) {
-                                                        Text("· ${entry.note}", fontSize = 11.sp,
-                                                            color = LocalMcColors.current.textSecondary,
-                                                            maxLines = 1)
-                                                    }
-                                                }
-                                            }
-                                        }
-
-                                        // Offsite entries
-                                        if (data.offsiteEntries.isNotEmpty()) {
-                                            if (data.clockIns.isNotEmpty() || data.remoteEntries.isNotEmpty()) {
-                                                Spacer(modifier = Modifier.height(6.dp))
-                                                HorizontalDivider(color = LocalMcColors.current.border.copy(alpha = 0.5f))
-                                                Spacer(modifier = Modifier.height(6.dp))
-                                            }
-                                            data.offsiteEntries.forEach { entry ->
-                                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                                    verticalAlignment = Alignment.CenterVertically) {
-                                                    Text("🧳", fontSize = 12.sp)
-                                                    Text("Offsite Work", fontSize = 12.sp,
-                                                        color = LocalMcColors.current.textSecondary,
-                                                        fontWeight = FontWeight.SemiBold)
-                                                    if (!entry.note.isNullOrBlank()) {
-                                                        Text("· ${entry.note}", fontSize = 11.sp,
-                                                            color = LocalMcColors.current.textSecondary,
-                                                            maxLines = 1)
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
+                                    DayCard(
+                                        dayKey = dayKey,
+                                        data = data,
+                                        parsedDate = parsedDate,
+                                        dateFormat = dateFormat,
+                                        timeFormat = timeFormat,
+                                        hoursDisplay = hoursDisplay,
+                                        statusColor = statusColor,
+                                        workType = workType
+                                    )
                                 }
                             }
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun DayCard(
+    dayKey: String,
+    data: DayData,
+    parsedDate: Date?,
+    dateFormat: SimpleDateFormat,
+    timeFormat: SimpleDateFormat,
+    hoursDisplay: String,
+    statusColor: Color,
+    workType: String?
+) {
+    var isExpanded by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(LocalMcColors.current.surface, RoundedCornerShape(12.dp))
+            .border(1.dp, LocalMcColors.current.border, RoundedCornerShape(12.dp))
+    ) {
+        // ── Header ──────────────────────────────────────────────────────────
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { isExpanded = !isExpanded }
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = parsedDate?.let { dateFormat.format(it) } ?: dayKey,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = LocalMcColors.current.text
+                )
+                if (workType != null) {
+                    val wtColor = when (workType) {
+                        "Hybrid"  -> Color(0xFF9B6DFF)
+                        "Offsite" -> Color(0xFF6366F1)
+                        else      -> Color(0xFF2DD4BF)
+                    }
+                    Text(
+                        text = workType.uppercase(),
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.5.sp,
+                        color = wtColor,
+                        modifier = Modifier
+                            .background(wtColor.copy(alpha = 0.14f), RoundedCornerShape(4.dp))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    text = hoursDisplay,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = statusColor,
+                    modifier = Modifier
+                        .background(statusColor.copy(alpha = 0.12f), RoundedCornerShape(8.dp))
+                        .padding(horizontal = 10.dp, vertical = 5.dp)
+                )
+                Text(
+                    text = if (isExpanded) "▲" else "▼",
+                    fontSize = 9.sp,
+                    color = LocalMcColors.current.textTertiary
+                )
+            }
+        }
+
+        // ── Expanded detail ──────────────────────────────────────────────────
+        if (isExpanded) {
+            HorizontalDivider(
+                color = LocalMcColors.current.border,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+
+            // Clock events
+            data.clockIns.forEachIndexed { i, ci ->
+                val co = data.clockOuts.getOrNull(i)
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier.size(34.dp).background(McGreen.copy(alpha = 0.15f), RoundedCornerShape(17.dp)),
+                            contentAlignment = Alignment.Center
+                        ) { Text("→", fontSize = 14.sp, color = McGreen, fontWeight = FontWeight.Bold) }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Clocked In", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = LocalMcColors.current.text)
+                        }
+                        Text(timeFormat.format(ci.timestamp.toDate()), fontSize = 13.sp, fontWeight = FontWeight.Medium, color = LocalMcColors.current.textSecondary)
+                    }
+                    if (co != null) {
+                        HorizontalDivider(color = LocalMcColors.current.border, modifier = Modifier.padding(start = 62.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier.size(34.dp).background(McRed.copy(alpha = 0.15f), RoundedCornerShape(17.dp)),
+                                contentAlignment = Alignment.Center
+                            ) { Text("←", fontSize = 14.sp, color = McRed, fontWeight = FontWeight.Bold) }
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Clocked Out", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = LocalMcColors.current.text)
+                            }
+                            Text(timeFormat.format(co.timestamp.toDate()), fontSize = 13.sp, fontWeight = FontWeight.Medium, color = LocalMcColors.current.textSecondary)
+                        }
+                    } else {
+                        HorizontalDivider(color = LocalMcColors.current.border, modifier = Modifier.padding(start = 62.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Box(modifier = Modifier.size(34.dp)) {}
+                            Text("Still clocked in", fontSize = 13.sp, color = McGreen, fontWeight = FontWeight.Medium)
+                        }
+                    }
+                }
+            }
+
+            // Remote entries
+            if (data.remoteEntries.isNotEmpty()) {
+                if (data.clockIns.isNotEmpty()) {
+                    HorizontalDivider(color = LocalMcColors.current.border, modifier = Modifier.padding(horizontal = 16.dp))
+                }
+                data.remoteEntries.forEach { entry ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier.size(34.dp).background(Color(0xFF2DD4BF).copy(alpha = 0.15f), RoundedCornerShape(17.dp)),
+                            contentAlignment = Alignment.Center
+                        ) { Text("R", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2DD4BF)) }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Remote Work", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = LocalMcColors.current.text)
+                            entry.note?.let { n -> if (n.isNotEmpty()) Text(n, fontSize = 11.sp, color = LocalMcColors.current.textSecondary, maxLines = 1) }
+                        }
+                        val h = entry.hours
+                        Text(
+                            if (h % 1.0 == 0.0) "${h.toInt()}h" else "%.1fh".format(h),
+                            fontSize = 13.sp, fontWeight = FontWeight.Medium, color = LocalMcColors.current.textSecondary
+                        )
+                    }
+                }
+            }
+
+            // Offsite entries
+            if (data.offsiteEntries.isNotEmpty()) {
+                if (data.clockIns.isNotEmpty() || data.remoteEntries.isNotEmpty()) {
+                    HorizontalDivider(color = LocalMcColors.current.border, modifier = Modifier.padding(horizontal = 16.dp))
+                }
+                data.offsiteEntries.forEach { entry ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier.size(34.dp).background(Color(0xFF6366F1).copy(alpha = 0.15f), RoundedCornerShape(17.dp)),
+                            contentAlignment = Alignment.Center
+                        ) { Text("F", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF6366F1)) }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Offsite Work", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = LocalMcColors.current.text)
+                            entry.note?.let { n -> if (n.isNotEmpty()) Text(n, fontSize = 11.sp, color = LocalMcColors.current.textSecondary, maxLines = 1) }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
         }
     }
 }
